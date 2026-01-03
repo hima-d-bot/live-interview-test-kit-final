@@ -1,0 +1,8 @@
+--- a/api/main.py
++++ b/api/main.py
+@@ -19,4 +19,4 @@
+ 
+ @app.get("/")
+ def read_root():
+-    return {"message": "Environment Ready - Waiting for Challenge"}
++    return {"message": "Dummy Patch Applied Successfully!"}

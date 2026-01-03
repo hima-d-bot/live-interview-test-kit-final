@@ -1,73 +1,63 @@
-# Interviewer Guide: Live Interview Test Kit
+# Interviewer Guide: Live Interview Test Kit (Secure Workflow)
 
-This guide provides the necessary steps for the interviewer to manage the testing environment during the live interview.
+This guide provides the necessary steps for the interviewer to manage the secure testing environment during the live interview.
 
 ## 1. Pre-Interview Setup
 
 Ensure the candidate has successfully completed the following steps on their machine:
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <REPO_URL>
-    cd live-interview-kit
-    ```
-2.  **Verify environment:**
-    ```bash
-    make dev
-    ```
-    The web app should show the "Tasks App Skeleton" message.
-3.  **Run initial tests:**
-    ```bash
-    make test
-    ```
-    All tests should pass (minimal skeleton tests).
+1.  **Clone the repository.**
+2.  **Verify environment:** `make dev` (Services start cleanly).
+3.  **Run initial tests:** `make test` (All tests pass).
 
-## 2. Applying the Challenge
+**Crucially, the challenge mode is now LOCKED by default.** The candidate cannot apply the patch until you provide the unlock command.
 
-At the start of the interview, provide the candidate with the `challenge.patch` file and instruct them to apply it.
+## 2. Applying the Challenge (Live Session)
 
-1.  **Transfer the patch file** to the candidate (e.g., via chat, email, or a shared drive).
-2.  **Instruct the candidate to apply the patch:**
-    ```bash
-    make challenge FILE=challenge.patch
-    ```
-    The output should confirm the patch was applied successfully.
+At the start of the interview, follow these steps to activate the challenge:
 
-3.  **Restart services (if necessary):**
-    ```bash
-    make dev
-    ```
-    The web app should now show the full Tasks application, but with several bugs.
+### Step 2.1: Provide the Unlock Command
 
-4.  **Run challenge tests:**
-    ```bash
-    make test
-    ```
-    Confirm that **multiple tests fail** across the API and Web components, indicating the challenge is active.
+Instruct the candidate to run the following command. This creates a hidden file (`.challenge_locked`) that the `make challenge` command checks for.
 
-## 3. Challenge Details and Signals
+```bash
+make unlock
+```
 
-The applied patch introduces a small Tasks application with the following intentional bugs designed to test debugging and diligence:
+### Step 2.2: Provide the Patch File
 
-| Bug Theme | Location | Description | Signal Tested |
-| :--- | :--- | :--- | :--- |
-| **Backend Logic** | `api/main.py` (read_tasks) | **Pagination Swap:** `skip` and `limit` parameters are swapped in the SQLAlchemy query. This causes incorrect data fetching and is a subtle logic error. | Debugging, Code Review |
-| **Backend Constraint** | `api/main.py` (create_task) | **Silent Failure Trap:** If a task title is "error", the function returns a dummy 200 response without saving to the DB. This tests diligence in checking API responses. | Diligence, API Contract Verification |
-| **Integration Mismatch** | `web/src/App.tsx` (toggleTask) | **Incorrect Payload Key:** The frontend sends `status` instead of the expected `completed` boolean in the PUT request. The backend ignores the update due to the wrong key. | Contract Awareness, Full-Stack Debugging |
-| **Frontend Logic** | `web/src/App.tsx` (addTask) | **Race Condition/UI Sync:** `fetchTasks()` is commented out after a successful POST, meaning the UI does not refresh automatically after adding a task. | State Management, UI/UX Awareness |
-| **Frontend Default** | `web/src/App.tsx` (fetchTasks) | **Default Pagination:** The initial fetch uses hardcoded, incorrect pagination parameters (`skip=10&limit=0`), causing the initial task list to be empty even if tasks exist. | Configuration, Initial State Debugging |
+Transfer the `challenge.patch` file to the candidate (e.g., via chat, email, or a shared drive).
 
-## 4. Suggested Follow-up "Small Change"
+### Step 2.3: Instruct Candidate to Apply the Patch
 
-If the candidate finishes early, you can ask them to implement a small feature to test their ability to add new, clean code:
+Instruct the candidate to apply the patch using the dynamic path command:
 
-> **Task:** Implement a simple filter on the frontend to show only **Completed** or **Pending** tasks. This should be a simple toggle button or dropdown.
+```bash
+make challenge FILE=path/to/challenge.patch
+```
 
-## 5. Resetting the Environment
+### Step 2.4: Restart Services
+
+Instruct the candidate to restart the services to load the new application code and bugs:
+
+```bash
+make dev
+```
+
+### Step 2.5: Verify Challenge Activation
+
+Instruct the candidate to run the tests to confirm the challenge is active:
+
+```bash
+make test
+```
+**Expected Result:** Multiple tests should fail across the API and Web components.
+
+## 3. Resetting the Environment
 
 To clean up the environment after the interview, instruct the candidate to run:
 
 ```bash
 make reset
 ```
-This command uses `git checkout .` and `git clean -fd` to reliably restore the repository to the initial skeleton state, removing all changes and artifacts.
+This command reliably restores the repository to the initial skeleton state, removes all changes, and **re-locks** the challenge mode.

@@ -1,22 +1,23 @@
-.PHONY: dev test challenge reset clean help
+.PHONY: dev test challenge reset clean help unlock
 
 # Default mode is base (skeleton)
 MODE ?= base
 PROJECT_NAME = live-interview-kit
+LOCK_FILE = .challenge_locked
 
 help:
 	@echo "Usage:"
 	@echo "  make dev              - Build and start services in the background"
 	@echo "  make logs             - Follow logs from all services"
 	@echo "  make test             - Run all backend and frontend tests"
-	@echo "  make challenge FILE=  - Apply a challenge patch from a specific path"
-	@echo "  make reset            - Restore repository to skeleton state and clean volumes"
+	@echo "  make unlock           - Unlock the challenge mode (Interviewer only)"
+	@echo "  make challenge FILE=  - Apply a challenge patch (Only after unlock)"
+	@echo "  make reset            - Restore repository to skeleton state and relock"
 	@echo "  make clean            - Stop services and remove all containers/volumes"
 
 dev:
 	docker compose up --build -d
 	@echo "Services started. API: http://localhost:8000, Web: http://localhost:3000"
-	@echo "Use 'make logs' to see the output."
 
 logs:
 	docker compose logs -f
@@ -27,13 +28,21 @@ test:
 	@echo "Running Web tests..."
 	docker compose run --rm web npm test -- --watchAll=false
 
+unlock:
+	@echo "Unlocking challenge mode..."
+	@touch $(LOCK_FILE)
+	@echo "Challenge mode UNLOCKED. You can now run 'make challenge FILE=...'"
+
 challenge:
-	@if [ -z "$(FILE)" ]; then \
-		echo "Error: FILE argument is missing."; \
-		echo "Usage: make challenge FILE=/absolute/path/to/challenge.patch"; \
+	@if [ ! -f "$(LOCK_FILE)" ]; then \
+		echo "Error: Challenge mode is LOCKED."; \
+		echo "Please wait for your interviewer to provide the unlock command."; \
 		exit 1; \
 	fi
-	@# Handle both relative and absolute paths
+	@if [ -z "$(FILE)" ]; then \
+		echo "Error: FILE argument is missing."; \
+		exit 1; \
+	fi
 	@ABS_FILE=$$(realpath $(FILE)); \
 	if [ ! -f "$$ABS_FILE" ]; then \
 		echo "Error: File $$ABS_FILE not found."; \
@@ -47,9 +56,11 @@ reset:
 	@echo "Resetting repository to skeleton state..."
 	git checkout .
 	git clean -fd
+	rm -f $(LOCK_FILE)
 	docker compose down -v
-	@echo "Repository reset successfully."
+	@echo "Repository reset and LOCKED."
 
 clean:
 	docker compose down -v
 	rm -rf api/__pycache__ web/node_modules
+	rm -f $(LOCK_FILE)
