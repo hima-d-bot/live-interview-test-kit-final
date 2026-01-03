@@ -26,14 +26,9 @@ make dev
 
 ### Step 2.3: Test the Mechanism (Optional)
 
-You can verify that the patching mechanism works by using the provided `dummy_test.patch`. **Note: You must unlock the environment first.**
+You can verify that the patching mechanism works by using the provided `dummy_test.patch`.
 
 ```bash
-# This will fail initially (Locked)
-make challenge FILE=dummy_test.patch
-
-# Unlock and then apply
-make unlock
 make challenge FILE=dummy_test.patch
 make dev
 ```
@@ -43,19 +38,17 @@ After running this, `http://localhost:8000/` should show "Dummy Patch Applied Su
 
 ## 3. The Live Interview
 
-At the start of the interview, your interviewer will provide the **real** challenge patch.
+At the start of the interview, your interviewer will provide the **real** challenge patch file.
 
-1.  **Unlock:** Run `make unlock` when instructed.
-2.  **Apply:** Run `make challenge FILE=path/to/real_challenge.patch`.
-3.  **Restart:** Run `make dev`.
-4.  **Solve:** Run `make test` and start fixing the bugs!
+1.  **Apply:** Run `make challenge FILE=path/to/real_challenge.patch`.
+2.  **Restart:** Run `make dev`.
+3.  **Solve:** Run `make test` and start fixing the bugs!
 
 ## Commands Summary
 
 | Command | Description |
 | :--- | :--- |
 | `make dev` | Starts the API and Web services. |
-| `make unlock` | **Required** before applying any patch. |
 | `make challenge FILE=...` | Applies the provided patch file. |
 | `make test` | Runs all backend and frontend tests. |
-| `make reset` | Restores the repository to the initial **LOCKED** skeleton state. |
+| `make reset` | Restores the repository to the initial skeleton state. |
