@@ -11,4 +11,4 @@ def test_health():
 def test_root():
     response = client.get("/")
     assert response.status_code == 200
-    assert "Skeleton" in response.json()["message"]
+    assert "Environment Ready" in response.json()["message"]
