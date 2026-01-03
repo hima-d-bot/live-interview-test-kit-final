@@ -1,0 +1,13 @@
+# Dependencies
+/node_modules
+/api/__pycache__
+/api/.pytest_cache
+
+# Docker
+.env
+.DS_Store
+
+# Interviewer Assets
+# This directory contains files that should not be visible to the student
+# until the interviewer explicitly "unlocks" them.
+/interviewer_assets/
