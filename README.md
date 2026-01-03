@@ -1,54 +1,53 @@
-# Live Interview Test Kit - Candidate Instructions
+# Live Interview Test Kit
 
-Welcome to your live interview environment. This repository contains the base skeleton for the task you will be working on.
+Welcome to your live coding interview! This repository contains a base skeleton for a simple Task Management application.
 
 ## 1. Prerequisites
 
-You **must** have the following software installed and running on your machine:
+Ensure you have the following installed:
+- **Docker** and **Docker Compose**
+- **Git**
 
-1.  **Git:** For cloning the repository.
-2.  **Docker and Docker Compose:** The entire application runs inside containers.
+## 2. Getting Started
 
-## 2. Initial Setup and Verification (Pre-Interview)
+1.  **Clone the repository**:
+    ```bash
+    git clone <repo-url>
+    cd live-interview-test-kit
+    ```
 
-### Step 2.1: Clone and Start
+2.  **Start the environment**:
+    ```bash
+    make dev
+    ```
+    This will start the backend (FastAPI) at `http://localhost:8000` and the frontend (React) at `http://localhost:3000`.
 
-```bash
-git clone <REPO_URL>
-cd live-interview-kit
-make dev
-```
+3.  **Verify the setup**:
+    Open `http://localhost:3000` in your browser. You should see a "Waiting for Challenge" message.
 
-### Step 2.2: Verify Skeleton
+## 3. The Challenge
 
--   **API:** `http://localhost:8000/health` -> `{"status": "ok"}`
--   **Web:** `http://localhost:3000` -> **"Interview Environment Ready"**
+Once the interviewer provides the challenge patch, follow these steps:
 
-### Step 2.3: Test the Mechanism (Optional)
+1.  **Apply the patch**:
+    ```bash
+    make challenge FILE=challenge.patch
+    ```
 
-You can verify that the patching mechanism works by using the provided `dummy_test.patch`.
+2.  **Restart services**:
+    ```bash
+    make dev
+    ```
 
-```bash
-make challenge FILE=dummy_test.patch
-make dev
-```
-After running this, `http://localhost:8000/` should show "Dummy Patch Applied Successfully!".
+3.  **Begin Debugging**:
+    The application now has several features implemented, but it's riddled with bugs. Your task is to identify and fix them. Some bugs are logic-based, some are state-related, and some might involve the contract between the frontend and backend.
 
-**Important:** Before the actual interview, please run `make reset` to return to the clean skeleton state.
+## 4. Available Commands
 
-## 3. The Live Interview
+- `make dev`: Build and start services.
+- `make logs`: View logs from all services.
+- `make test`: Run backend and frontend tests.
+- `make reset`: Revert all changes to the base skeleton.
+- `make clean`: Stop services and remove containers.
 
-At the start of the interview, your interviewer will provide the **real** challenge patch file.
-
-1.  **Apply:** Run `make challenge FILE=path/to/real_challenge.patch`.
-2.  **Restart:** Run `make dev`.
-3.  **Solve:** Run `make test` and start fixing the bugs!
-
-## Commands Summary
-
-| Command | Description |
-| :--- | :--- |
-| `make dev` | Starts the API and Web services. |
-| `make challenge FILE=...` | Applies the provided patch file. |
-| `make test` | Runs all backend and frontend tests. |
-| `make reset` | Restores the repository to the initial skeleton state. |
+Good luck!
