@@ -23,17 +23,22 @@ cd live-interview-kit
 
 ### Step 2.2: Build and Start Services
 
-The first time you run this command, Docker will build the images and install all dependencies (Python packages for the API, and Node modules for the Web app).
+The `make dev` command will build the Docker images (installing all dependencies like Python packages and Node modules) and start the services in the background.
 
 ```bash
 make dev
 ```
 
 **Expected Output:**
-The command will show logs for two services: `api` and `web`. Wait until you see messages indicating the services are running and healthy.
+The command will confirm the services are running.
 
 -   **API Service:** Running on `http://localhost:8000`
 -   **Web Service:** Running on `http://localhost:3000`
+
+You can view the live logs with:
+```bash
+make logs
+```
 
 ### Step 2.3: Verify Skeleton Application
 
@@ -59,10 +64,14 @@ At the start of the interview, your interviewer will provide a challenge file (`
 
 ### Step 3.1: Apply the Challenge Patch
 
-You will apply the patch using the following command:
+You will apply the patch using the following command. **The `FILE` argument can be an absolute or relative path to the patch file.**
 
 ```bash
-make challenge FILE=path/to/challenge.patch
+# Example using a relative path (if the patch is in the current directory)
+make challenge FILE=challenge.patch
+
+# Example using an absolute path
+make challenge FILE=/Users/candidate/Downloads/challenge.patch
 ```
 
 ### Step 3.2: Restart Services
@@ -86,8 +95,9 @@ make dev
 
 | Command | Description |
 | :--- | :--- |
-| `make dev` | Builds (if necessary) and starts the API and Web services. |
+| `make dev` | Builds (if necessary) and starts the API and Web services in the background. |
+| `make logs` | Streams the logs from all running services. |
 | `make test` | Runs all backend (Python) and frontend (TypeScript) tests. |
-| `make challenge FILE=...` | Applies the patch file provided by the interviewer. |
+| `make challenge FILE=...` | Applies the patch file from any specified path. |
 | `make reset` | Restores the repository to the initial skeleton state, removing all changes and artifacts. |
 | `make clean` | Stops and removes Docker containers and volumes. |

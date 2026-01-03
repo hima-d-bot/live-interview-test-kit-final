@@ -1,20 +1,26 @@
 services:
   api:
-    build: ./api
+    build: 
+      context: ./api
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
       - ./api:/app
     environment:
       - DATABASE_URL=sqlite:///./test.db
+      - PYTHONUNBUFFERED=1
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   web:
-    build: ./web
+    build: 
+      context: ./web
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     volumes:
@@ -22,6 +28,8 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:8000
+      - CHOKIDAR_USEPOLLING=true
     depends_on:
       api:
         condition: service_healthy
+    restart: unless-stopped
