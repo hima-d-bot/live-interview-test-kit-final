@@ -11,14 +11,17 @@ This branch contains the challenge patch and the problem design for the live int
 
 When you are ready to start the challenge:
 
-1.  Provide the `interviewer_assets/challenge.patch` file to the candidate.
-2.  You can do this by:
-    -   Sending the file directly.
-    -   If you have access to their machine, run:
-        ```bash
-        cp interviewer_assets/challenge.patch .
-        ```
-    -   Or instruct them to run the `make challenge` command if you've already placed the file in their root directory.
+1.  **Share the patch**: The candidate can pull the patch directly from the `interviewer` branch without switching branches.
+2.  **Instruct the candidate** to run the following command:
+    ```bash
+    git show interviewer:interviewer_assets/challenge.patch > challenge.patch
+    ```
+    This command extracts the patch file from the `interviewer` branch and saves it to their current directory on the `master` branch.
+
+3.  **Apply the patch**:
+    ```bash
+    make challenge FILE=challenge.patch
+    ```
 
 ## 3. The Problems
 
