@@ -1,63 +1,36 @@
-# Interviewer Guide: Live Interview Test Kit (Secure Workflow)
+# Interviewer Guide: Task Manager Pro (Complex Challenge)
 
-This guide provides the necessary steps for the interviewer to manage the secure testing environment during the live interview.
+This guide provides the details for the advanced Tasks application challenge, including the complex bugs and the signals they test.
 
-## 1. Pre-Interview Setup
+## 1. Challenge Overview
 
-Ensure the candidate has successfully completed the following steps on their machine:
+The `challenge.patch` transforms the skeleton into **Task Manager Pro**, a full-stack application with search, filtering, and pagination. It contains **7 intentional bugs** that range from simple logic errors to complex contract mismatches and silent failures.
 
-1.  **Clone the repository.**
-2.  **Verify environment:** `make dev` (Services start cleanly).
-3.  **Run initial tests:** `make test` (All tests pass).
+## 2. Bug Details and Signals
 
-**Crucially, the challenge mode is now LOCKED by default.** The candidate cannot apply the patch until you provide the unlock command.
+| Bug ID | Location | Description | Signal Tested |
+| :--- | :--- | :--- | :--- |
+| **BUG 1** | `api/main.py` | **Inverted Filter:** The `completed` filter uses `!=` instead of `==`. Filtering for "Completed" shows "Pending" tasks. | Logical Reasoning, Debugging |
+| **BUG 2** | `api/main.py` | **Pagination Offset:** Offset is calculated as `page * page_size` instead of `(page - 1) * page_size`. Page 1 skips the first 5 items. | Math/Logic, Edge Case Awareness |
+| **BUG 3** | `api/main.py` | **Silent Failure Trap:** Tasks with the title "error" are not saved to the DB but return a dummy 200 response. | Diligence, Verification Habits |
+| **BUG 4** | `api/main.py` | **Partial Update:** The `priority` field is explicitly excluded from updates in the `PUT` route. | Code Review, API Contract |
+| **BUG 5** | `web/src/App.tsx` | **Type Mismatch:** The frontend tries to set the entire response object (including `total`, `page`) as the `tasks` array. | TypeScript/React, Data Handling |
+| **BUG 6** | `web/src/App.tsx` | **UI Sync Race:** `fetchTasks()` is not called after adding a task, so the list doesn't refresh. | State Management, UX Awareness |
+| **BUG 7** | `web/src/App.tsx` | **Contract Mismatch:** Frontend sends `status` instead of `completed` in the `PUT` request. | Full-Stack Debugging, Contract Awareness |
 
-## 2. Applying the Challenge (Live Session)
+## 3. Interviewer Workflow
 
-At the start of the interview, follow these steps to activate the challenge:
+1.  **Unlock:** `make unlock` (Candidate runs this).
+2.  **Patch:** `make challenge FILE=challenge.patch` (Candidate applies the file you provide).
+3.  **Restart:** `make dev`.
+4.  **Observe:**
+    *   Does the candidate notice the empty list on Page 1 (Bug 2)?
+    *   Do they check the browser console when the app crashes/fails to load (Bug 5)?
+    *   Do they verify the database or API logs when "error" tasks don't appear (Bug 3)?
+    *   How do they handle the contract mismatch (Bug 7)?
 
-### Step 2.1: Provide the Unlock Command
+## 4. Suggested Follow-up
 
-Instruct the candidate to run the following command. This creates a hidden file (`.challenge_locked`) that the `make challenge` command checks for.
+> **Task:** Add a "Delete All Completed" button to the UI and implement the corresponding backend endpoint.
 
-```bash
-make unlock
-```
-
-### Step 2.2: Provide the Patch File
-
-Transfer the `challenge.patch` file to the candidate (e.g., via chat, email, or a shared drive).
-
-### Step 2.3: Instruct Candidate to Apply the Patch
-
-Instruct the candidate to apply the patch using the dynamic path command:
-
-```bash
-make challenge FILE=path/to/challenge.patch
-```
-
-### Step 2.4: Restart Services
-
-Instruct the candidate to restart the services to load the new application code and bugs:
-
-```bash
-make dev
-```
-
-### Step 2.5: Verify Challenge Activation
-
-Instruct the candidate to run the tests to confirm the challenge is active:
-
-```bash
-make test
-```
-**Expected Result:** Multiple tests should fail across the API and Web components.
-
-## 3. Resetting the Environment
-
-To clean up the environment after the interview, instruct the candidate to run:
-
-```bash
-make reset
-```
-This command reliably restores the repository to the initial skeleton state, removes all changes, and **re-locks** the challenge mode.
+This tests their ability to add new, clean code to an existing (now fixed) codebase.

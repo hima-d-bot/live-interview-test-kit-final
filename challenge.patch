@@ -1,12 +1,1332 @@
+diff -ruN live-interview-kit/.git/COMMIT_EDITMSG live-interview-full-v2/.git/COMMIT_EDITMSG
+--- live-interview-kit/.git/COMMIT_EDITMSG	2026-01-03 14:12:20.267217271 -0500
++++ live-interview-full-v2/.git/COMMIT_EDITMSG	1969-12-31 19:00:00.000000000 -0500
+@@ -1 +0,0 @@
+-Implemented secure Lock/Unlock mechanism for challenge patching
+diff -ruN live-interview-kit/.git/HEAD live-interview-full-v2/.git/HEAD
+--- live-interview-kit/.git/HEAD	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/HEAD	1969-12-31 19:00:00.000000000 -0500
+@@ -1 +0,0 @@
+-ref: refs/heads/master
+diff -ruN live-interview-kit/.git/config live-interview-full-v2/.git/config
+--- live-interview-kit/.git/config	2026-01-03 14:02:29.941333613 -0500
++++ live-interview-full-v2/.git/config	1969-12-31 19:00:00.000000000 -0500
+@@ -1,11 +0,0 @@
+-[core]
+-	repositoryformatversion = 0
+-	filemode = true
+-	bare = false
+-	logallrefupdates = true
+-[remote "origin"]
+-	url = https://github.com/hima-d-bot/live-interview-test-kit-final.git
+-	fetch = +refs/heads/*:refs/remotes/origin/*
+-[branch "master"]
+-	remote = origin
+-	merge = refs/heads/master
+diff -ruN live-interview-kit/.git/description live-interview-full-v2/.git/description
+--- live-interview-kit/.git/description	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/description	1969-12-31 19:00:00.000000000 -0500
+@@ -1 +0,0 @@
+-Unnamed repository; edit this file 'description' to name the repository.
+diff -ruN live-interview-kit/.git/hooks/applypatch-msg.sample live-interview-full-v2/.git/hooks/applypatch-msg.sample
+--- live-interview-kit/.git/hooks/applypatch-msg.sample	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/hooks/applypatch-msg.sample	1969-12-31 19:00:00.000000000 -0500
+@@ -1,15 +0,0 @@
+-#!/bin/sh
+-#
+-# An example hook script to check the commit log message taken by
+-# applypatch from an e-mail message.
+-#
+-# The hook should exit with non-zero status after issuing an
+-# appropriate message if it wants to stop the commit.  The hook is
+-# allowed to edit the commit message file.
+-#
+-# To enable this hook, rename this file to "applypatch-msg".
+-
+-. git-sh-setup
+-commitmsg="$(git rev-parse --git-path hooks/commit-msg)"
+-test -x "$commitmsg" && exec "$commitmsg" ${1+"$@"}
+-:
+diff -ruN live-interview-kit/.git/hooks/commit-msg.sample live-interview-full-v2/.git/hooks/commit-msg.sample
+--- live-interview-kit/.git/hooks/commit-msg.sample	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/hooks/commit-msg.sample	1969-12-31 19:00:00.000000000 -0500
+@@ -1,24 +0,0 @@
+-#!/bin/sh
+-#
+-# An example hook script to check the commit log message.
+-# Called by "git commit" with one argument, the name of the file
+-# that has the commit message.  The hook should exit with non-zero
+-# status after issuing an appropriate message if it wants to stop the
+-# commit.  The hook is allowed to edit the commit message file.
+-#
+-# To enable this hook, rename this file to "commit-msg".
+-
+-# Uncomment the below to add a Signed-off-by line to the message.
+-# Doing this in a hook is a bad idea in general, but the prepare-commit-msg
+-# hook is more suited to it.
+-#
+-# SOB=$(git var GIT_AUTHOR_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
+-# grep -qs "^$SOB" "$1" || echo "$SOB" >> "$1"
+-
+-# This example catches duplicate Signed-off-by lines.
+-
+-test "" = "$(grep '^Signed-off-by: ' "$1" |
+-	 sort | uniq -c | sed -e '/^[ 	]*1[ 	]/d')" || {
+-	echo >&2 Duplicate Signed-off-by lines.
+-	exit 1
+-}
+diff -ruN live-interview-kit/.git/hooks/fsmonitor-watchman.sample live-interview-full-v2/.git/hooks/fsmonitor-watchman.sample
+--- live-interview-kit/.git/hooks/fsmonitor-watchman.sample	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/hooks/fsmonitor-watchman.sample	1969-12-31 19:00:00.000000000 -0500
+@@ -1,173 +0,0 @@
+-#!/usr/bin/perl
+-
+-use strict;
+-use warnings;
+-use IPC::Open2;
+-
+-# An example hook script to integrate Watchman
+-# (https://facebook.github.io/watchman/) with git to speed up detecting
+-# new and modified files.
+-#
+-# The hook is passed a version (currently 2) and last update token
+-# formatted as a string and outputs to stdout a new update token and
+-# all files that have been modified since the update token. Paths must
+-# be relative to the root of the working tree and separated by a single NUL.
+-#
+-# To enable this hook, rename this file to "query-watchman" and set
+-# 'git config core.fsmonitor .git/hooks/query-watchman'
+-#
+-my ($version, $last_update_token) = @ARGV;
+-
+-# Uncomment for debugging
+-# print STDERR "$0 $version $last_update_token\n";
+-
+-# Check the hook interface version
+-if ($version ne 2) {
+-	die "Unsupported query-fsmonitor hook version '$version'.\n" .
+-	    "Falling back to scanning...\n";
+-}
+-
+-my $git_work_tree = get_working_dir();
+-
+-my $retry = 1;
+-
+-my $json_pkg;
+-eval {
+-	require JSON::XS;
+-	$json_pkg = "JSON::XS";
+-	1;
+-} or do {
+-	require JSON::PP;
+-	$json_pkg = "JSON::PP";
+-};
+-
+-launch_watchman();
+-
+-sub launch_watchman {
+-	my $o = watchman_query();
+-	if (is_work_tree_watched($o)) {
+-		output_result($o->{clock}, @{$o->{files}});
+-	}
+-}
+-
+-sub output_result {
+-	my ($clockid, @files) = @_;
+-
+-	# Uncomment for debugging watchman output
+-	# open (my $fh, ">", ".git/watchman-output.out");
+-	# binmode $fh, ":utf8";
+-	# print $fh "$clockid\n@files\n";
+-	# close $fh;
+-
+-	binmode STDOUT, ":utf8";
+-	print $clockid;
+-	print "\0";
+-	local $, = "\0";
+-	print @files;
+-}
+-
+-sub watchman_clock {
+-	my $response = qx/watchman clock "$git_work_tree"/;
+-	die "Failed to get clock id on '$git_work_tree'.\n" .
+-		"Falling back to scanning...\n" if $? != 0;
+-
+-	return $json_pkg->new->utf8->decode($response);
+-}
+-
+-sub watchman_query {
+-	my $pid = open2(\*CHLD_OUT, \*CHLD_IN, 'watchman -j --no-pretty')
+-	or die "open2() failed: $!\n" .
+-	"Falling back to scanning...\n";
+-
+-	# In the query expression below we're asking for names of files that
+-	# changed since $last_update_token but not from the .git folder.
+-	#
+-	# To accomplish this, we're using the "since" generator to use the
+-	# recency index to select candidate nodes and "fields" to limit the
+-	# output to file names only. Then we're using the "expression" term to
+-	# further constrain the results.
+-	if (substr($last_update_token, 0, 1) eq "c") {
+-		$last_update_token = "\"$last_update_token\"";
+-	}
+-	my $query = <<"	END";
+-		["query", "$git_work_tree", {
+-			"since": $last_update_token,
+-			"fields": ["name"],
+-			"expression": ["not", ["dirname", ".git"]]
+-		}]
+-	END
+-
+-	# Uncomment for debugging the watchman query
+-	# open (my $fh, ">", ".git/watchman-query.json");
+-	# print $fh $query;
+-	# close $fh;
+-
+-	print CHLD_IN $query;
+-	close CHLD_IN;
+-	my $response = do {local $/; <CHLD_OUT>};
+-
+-	# Uncomment for debugging the watch response
+-	# open ($fh, ">", ".git/watchman-response.json");
+-	# print $fh $response;
+-	# close $fh;
+-
+-	die "Watchman: command returned no output.\n" .
+-	"Falling back to scanning...\n" if $response eq "";
+-	die "Watchman: command returned invalid output: $response\n" .
+-	"Falling back to scanning...\n" unless $response =~ /^\{/;
+-
+-	return $json_pkg->new->utf8->decode($response);
+-}
+-
+-sub is_work_tree_watched {
+-	my ($output) = @_;
+-	my $error = $output->{error};
+-	if ($retry > 0 and $error and $error =~ m/unable to resolve root .* directory (.*) is not watched/) {
+-		$retry--;
+-		my $response = qx/watchman watch "$git_work_tree"/;
+-		die "Failed to make watchman watch '$git_work_tree'.\n" .
+-		    "Falling back to scanning...\n" if $? != 0;
+-		$output = $json_pkg->new->utf8->decode($response);
+-		$error = $output->{error};
+-		die "Watchman: $error.\n" .
+-		"Falling back to scanning...\n" if $error;
+-
+-		# Uncomment for debugging watchman output
+-		# open (my $fh, ">", ".git/watchman-output.out");
+-		# close $fh;
+-
+-		# Watchman will always return all files on the first query so
+-		# return the fast "everything is dirty" flag to git and do the
+-		# Watchman query just to get it over with now so we won't pay
+-		# the cost in git to look up each individual file.
+-		my $o = watchman_clock();
+-		$error = $output->{error};
+-
+-		die "Watchman: $error.\n" .
+-		"Falling back to scanning...\n" if $error;
+-
+-		output_result($o->{clock}, ("/"));
+-		$last_update_token = $o->{clock};
+-
+-		eval { launch_watchman() };
+-		return 0;
+-	}
+-
+-	die "Watchman: $error.\n" .
+-	"Falling back to scanning...\n" if $error;
+-
+-	return 1;
+-}
+-
+-sub get_working_dir {
+-	my $working_dir;
+-	if ($^O =~ 'msys' || $^O =~ 'cygwin') {
+-		$working_dir = Win32::GetCwd();
+-		$working_dir =~ tr/\\/\//;
+-	} else {
+-		require Cwd;
+-		$working_dir = Cwd::cwd();
+-	}
+-
+-	return $working_dir;
+-}
+diff -ruN live-interview-kit/.git/hooks/post-update.sample live-interview-full-v2/.git/hooks/post-update.sample
+--- live-interview-kit/.git/hooks/post-update.sample	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/hooks/post-update.sample	1969-12-31 19:00:00.000000000 -0500
+@@ -1,8 +0,0 @@
+-#!/bin/sh
+-#
+-# An example hook script to prepare a packed repository for use over
+-# dumb transports.
+-#
+-# To enable this hook, rename this file to "post-update".
+-
+-exec git update-server-info
+diff -ruN live-interview-kit/.git/hooks/pre-applypatch.sample live-interview-full-v2/.git/hooks/pre-applypatch.sample
+--- live-interview-kit/.git/hooks/pre-applypatch.sample	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/hooks/pre-applypatch.sample	1969-12-31 19:00:00.000000000 -0500
+@@ -1,14 +0,0 @@
+-#!/bin/sh
+-#
+-# An example hook script to verify what is about to be committed
+-# by applypatch from an e-mail message.
+-#
+-# The hook should exit with non-zero status after issuing an
+-# appropriate message if it wants to stop the commit.
+-#
+-# To enable this hook, rename this file to "pre-applypatch".
+-
+-. git-sh-setup
+-precommit="$(git rev-parse --git-path hooks/pre-commit)"
+-test -x "$precommit" && exec "$precommit" ${1+"$@"}
+-:
+diff -ruN live-interview-kit/.git/hooks/pre-commit.sample live-interview-full-v2/.git/hooks/pre-commit.sample
+--- live-interview-kit/.git/hooks/pre-commit.sample	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/hooks/pre-commit.sample	1969-12-31 19:00:00.000000000 -0500
+@@ -1,49 +0,0 @@
+-#!/bin/sh
+-#
+-# An example hook script to verify what is about to be committed.
+-# Called by "git commit" with no arguments.  The hook should
+-# exit with non-zero status after issuing an appropriate message if
+-# it wants to stop the commit.
+-#
+-# To enable this hook, rename this file to "pre-commit".
+-
+-if git rev-parse --verify HEAD >/dev/null 2>&1
+-then
+-	against=HEAD
+-else
+-	# Initial commit: diff against an empty tree object
+-	against=$(git hash-object -t tree /dev/null)
+-fi
+-
+-# If you want to allow non-ASCII filenames set this variable to true.
+-allownonascii=$(git config --type=bool hooks.allownonascii)
+-
+-# Redirect output to stderr.
+-exec 1>&2
+-
+-# Cross platform projects tend to avoid non-ASCII filenames; prevent
+-# them from being added to the repository. We exploit the fact that the
+-# printable range starts at the space character and ends with tilde.
+-if [ "$allownonascii" != "true" ] &&
+-	# Note that the use of brackets around a tr range is ok here, (it's
+-	# even required, for portability to Solaris 10's /usr/bin/tr), since
+-	# the square bracket bytes happen to fall in the designated range.
+-	test $(git diff --cached --name-only --diff-filter=A -z $against |
+-	  LC_ALL=C tr -d '[ -~]\0' | wc -c) != 0
+-then
+-	cat <<\EOF
+-Error: Attempt to add a non-ASCII file name.
+-
+-This can cause problems if you want to work with people on other platforms.
+-
+-To be portable it is advisable to rename the file.
+-
+-If you know what you are doing you can disable this check using:
+-
+-  git config hooks.allownonascii true
+-EOF
+-	exit 1
+-fi
+-
+-# If there are whitespace errors, print the offending file names and fail.
+-exec git diff-index --check --cached $against --
+diff -ruN live-interview-kit/.git/hooks/pre-merge-commit.sample live-interview-full-v2/.git/hooks/pre-merge-commit.sample
+--- live-interview-kit/.git/hooks/pre-merge-commit.sample	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/hooks/pre-merge-commit.sample	1969-12-31 19:00:00.000000000 -0500
+@@ -1,13 +0,0 @@
+-#!/bin/sh
+-#
+-# An example hook script to verify what is about to be committed.
+-# Called by "git merge" with no arguments.  The hook should
+-# exit with non-zero status after issuing an appropriate message to
+-# stderr if it wants to stop the merge commit.
+-#
+-# To enable this hook, rename this file to "pre-merge-commit".
+-
+-. git-sh-setup
+-test -x "$GIT_DIR/hooks/pre-commit" &&
+-        exec "$GIT_DIR/hooks/pre-commit"
+-:
+diff -ruN live-interview-kit/.git/hooks/pre-push.sample live-interview-full-v2/.git/hooks/pre-push.sample
+--- live-interview-kit/.git/hooks/pre-push.sample	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/hooks/pre-push.sample	1969-12-31 19:00:00.000000000 -0500
+@@ -1,53 +0,0 @@
+-#!/bin/sh
+-
+-# An example hook script to verify what is about to be pushed.  Called by "git
+-# push" after it has checked the remote status, but before anything has been
+-# pushed.  If this script exits with a non-zero status nothing will be pushed.
+-#
+-# This hook is called with the following parameters:
+-#
+-# $1 -- Name of the remote to which the push is being done
+-# $2 -- URL to which the push is being done
+-#
+-# If pushing without using a named remote those arguments will be equal.
+-#
+-# Information about the commits which are being pushed is supplied as lines to
+-# the standard input in the form:
+-#
+-#   <local ref> <local oid> <remote ref> <remote oid>
+-#
+-# This sample shows how to prevent push of commits where the log message starts
+-# with "WIP" (work in progress).
+-
+-remote="$1"
+-url="$2"
+-
+-zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
+-
+-while read local_ref local_oid remote_ref remote_oid
+-do
+-	if test "$local_oid" = "$zero"
+-	then
+-		# Handle delete
+-		:
+-	else
+-		if test "$remote_oid" = "$zero"
+-		then
+-			# New branch, examine all commits
+-			range="$local_oid"
+-		else
+-			# Update to existing branch, examine new commits
+-			range="$remote_oid..$local_oid"
+-		fi
+-
+-		# Check for WIP commit
+-		commit=$(git rev-list -n 1 --grep '^WIP' "$range")
+-		if test -n "$commit"
+-		then
+-			echo >&2 "Found WIP commit in $local_ref, not pushing"
+-			exit 1
+-		fi
+-	fi
+-done
+-
+-exit 0
+diff -ruN live-interview-kit/.git/hooks/pre-rebase.sample live-interview-full-v2/.git/hooks/pre-rebase.sample
+--- live-interview-kit/.git/hooks/pre-rebase.sample	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/hooks/pre-rebase.sample	1969-12-31 19:00:00.000000000 -0500
+@@ -1,169 +0,0 @@
+-#!/bin/sh
+-#
+-# Copyright (c) 2006, 2008 Junio C Hamano
+-#
+-# The "pre-rebase" hook is run just before "git rebase" starts doing
+-# its job, and can prevent the command from running by exiting with
+-# non-zero status.
+-#
+-# The hook is called with the following parameters:
+-#
+-# $1 -- the upstream the series was forked from.
+-# $2 -- the branch being rebased (or empty when rebasing the current branch).
+-#
+-# This sample shows how to prevent topic branches that are already
+-# merged to 'next' branch from getting rebased, because allowing it
+-# would result in rebasing already published history.
+-
+-publish=next
+-basebranch="$1"
+-if test "$#" = 2
+-then
+-	topic="refs/heads/$2"
+-else
+-	topic=`git symbolic-ref HEAD` ||
+-	exit 0 ;# we do not interrupt rebasing detached HEAD
+-fi
+-
+-case "$topic" in
+-refs/heads/??/*)
+-	;;
+-*)
+-	exit 0 ;# we do not interrupt others.
+-	;;
+-esac
+-
+-# Now we are dealing with a topic branch being rebased
+-# on top of master.  Is it OK to rebase it?
+-
+-# Does the topic really exist?
+-git show-ref -q "$topic" || {
+-	echo >&2 "No such branch $topic"
+-	exit 1
+-}
+-
+-# Is topic fully merged to master?
+-not_in_master=`git rev-list --pretty=oneline ^master "$topic"`
+-if test -z "$not_in_master"
+-then
+-	echo >&2 "$topic is fully merged to master; better remove it."
+-	exit 1 ;# we could allow it, but there is no point.
+-fi
+-
+-# Is topic ever merged to next?  If so you should not be rebasing it.
+-only_next_1=`git rev-list ^master "^$topic" ${publish} | sort`
+-only_next_2=`git rev-list ^master           ${publish} | sort`
+-if test "$only_next_1" = "$only_next_2"
+-then
+-	not_in_topic=`git rev-list "^$topic" master`
+-	if test -z "$not_in_topic"
+-	then
+-		echo >&2 "$topic is already up to date with master"
+-		exit 1 ;# we could allow it, but there is no point.
+-	else
+-		exit 0
+-	fi
+-else
+-	not_in_next=`git rev-list --pretty=oneline ^${publish} "$topic"`
+-	/usr/bin/perl -e '
+-		my $topic = $ARGV[0];
+-		my $msg = "* $topic has commits already merged to public branch:\n";
+-		my (%not_in_next) = map {
+-			/^([0-9a-f]+) /;
+-			($1 => 1);
+-		} split(/\n/, $ARGV[1]);
+-		for my $elem (map {
+-				/^([0-9a-f]+) (.*)$/;
+-				[$1 => $2];
+-			} split(/\n/, $ARGV[2])) {
+-			if (!exists $not_in_next{$elem->[0]}) {
+-				if ($msg) {
+-					print STDERR $msg;
+-					undef $msg;
+-				}
+-				print STDERR " $elem->[1]\n";
+-			}
+-		}
+-	' "$topic" "$not_in_next" "$not_in_master"
+-	exit 1
+-fi
+-
+-<<\DOC_END
+-
+-This sample hook safeguards topic branches that have been
+-published from being rewound.
+-
+-The workflow assumed here is:
+-
+- * Once a topic branch forks from "master", "master" is never
+-   merged into it again (either directly or indirectly).
+-
+- * Once a topic branch is fully cooked and merged into "master",
+-   it is deleted.  If you need to build on top of it to correct
+-   earlier mistakes, a new topic branch is created by forking at
+-   the tip of the "master".  This is not strictly necessary, but
+-   it makes it easier to keep your history simple.
+-
+- * Whenever you need to test or publish your changes to topic
+-   branches, merge them into "next" branch.
+-
+-The script, being an example, hardcodes the publish branch name
+-to be "next", but it is trivial to make it configurable via
+-$GIT_DIR/config mechanism.
+-
+-With this workflow, you would want to know:
+-
+-(1) ... if a topic branch has ever been merged to "next".  Young
+-    topic branches can have stupid mistakes you would rather
+-    clean up before publishing, and things that have not been
+-    merged into other branches can be easily rebased without
+-    affecting other people.  But once it is published, you would
+-    not want to rewind it.
+-
+-(2) ... if a topic branch has been fully merged to "master".
+-    Then you can delete it.  More importantly, you should not
+-    build on top of it -- other people may already want to
+-    change things related to the topic as patches against your
+-    "master", so if you need further changes, it is better to
+-    fork the topic (perhaps with the same name) afresh from the
+-    tip of "master".
+-
+-Let's look at this example:
+-
+-		   o---o---o---o---o---o---o---o---o---o "next"
+-		  /       /           /           /
+-		 /   a---a---b A     /           /
+-		/   /               /           /
+-	       /   /   c---c---c---c B         /
+-	      /   /   /             \         /
+-	     /   /   /   b---b C     \       /
+-	    /   /   /   /             \     /
+-    ---o---o---o---o---o---o---o---o---o---o---o "master"
+-
+-
+-A, B and C are topic branches.
+-
+- * A has one fix since it was merged up to "next".
+-
+- * B has finished.  It has been fully merged up to "master" and "next",
+-   and is ready to be deleted.
+-
+- * C has not merged to "next" at all.
+-
+-We would want to allow C to be rebased, refuse A, and encourage
+-B to be deleted.
+-
+-To compute (1):
+-
+-	git rev-list ^master ^topic next
+-	git rev-list ^master        next
+-
+-	if these match, topic has not merged in next at all.
+-
+-To compute (2):
+-
+-	git rev-list master..topic
+-
+-	if this is empty, it is fully merged to "master".
+-
+-DOC_END
+diff -ruN live-interview-kit/.git/hooks/pre-receive.sample live-interview-full-v2/.git/hooks/pre-receive.sample
+--- live-interview-kit/.git/hooks/pre-receive.sample	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/hooks/pre-receive.sample	1969-12-31 19:00:00.000000000 -0500
+@@ -1,24 +0,0 @@
+-#!/bin/sh
+-#
+-# An example hook script to make use of push options.
+-# The example simply echoes all push options that start with 'echoback='
+-# and rejects all pushes when the "reject" push option is used.
+-#
+-# To enable this hook, rename this file to "pre-receive".
+-
+-if test -n "$GIT_PUSH_OPTION_COUNT"
+-then
+-	i=0
+-	while test "$i" -lt "$GIT_PUSH_OPTION_COUNT"
+-	do
+-		eval "value=\$GIT_PUSH_OPTION_$i"
+-		case "$value" in
+-		echoback=*)
+-			echo "echo from the pre-receive-hook: ${value#*=}" >&2
+-			;;
+-		reject)
+-			exit 1
+-		esac
+-		i=$((i + 1))
+-	done
+-fi
+diff -ruN live-interview-kit/.git/hooks/prepare-commit-msg.sample live-interview-full-v2/.git/hooks/prepare-commit-msg.sample
+--- live-interview-kit/.git/hooks/prepare-commit-msg.sample	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/hooks/prepare-commit-msg.sample	1969-12-31 19:00:00.000000000 -0500
+@@ -1,42 +0,0 @@
+-#!/bin/sh
+-#
+-# An example hook script to prepare the commit log message.
+-# Called by "git commit" with the name of the file that has the
+-# commit message, followed by the description of the commit
+-# message's source.  The hook's purpose is to edit the commit
+-# message file.  If the hook fails with a non-zero status,
+-# the commit is aborted.
+-#
+-# To enable this hook, rename this file to "prepare-commit-msg".
+-
+-# This hook includes three examples. The first one removes the
+-# "# Please enter the commit message..." help message.
+-#
+-# The second includes the output of "git diff --name-status -r"
+-# into the message, just before the "git status" output.  It is
+-# commented because it doesn't cope with --amend or with squashed
+-# commits.
+-#
+-# The third example adds a Signed-off-by line to the message, that can
+-# still be edited.  This is rarely a good idea.
+-
+-COMMIT_MSG_FILE=$1
+-COMMIT_SOURCE=$2
+-SHA1=$3
+-
+-/usr/bin/perl -i.bak -ne 'print unless(m/^. Please enter the commit message/..m/^#$/)' "$COMMIT_MSG_FILE"
+-
+-# case "$COMMIT_SOURCE,$SHA1" in
+-#  ,|template,)
+-#    /usr/bin/perl -i.bak -pe '
+-#       print "\n" . `git diff --cached --name-status -r`
+-# 	 if /^#/ && $first++ == 0' "$COMMIT_MSG_FILE" ;;
+-#  *) ;;
+-# esac
+-
+-# SOB=$(git var GIT_COMMITTER_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
+-# git interpret-trailers --in-place --trailer "$SOB" "$COMMIT_MSG_FILE"
+-# if test -z "$COMMIT_SOURCE"
+-# then
+-#   /usr/bin/perl -i.bak -pe 'print "\n" if !$first_line++' "$COMMIT_MSG_FILE"
+-# fi
+diff -ruN live-interview-kit/.git/hooks/push-to-checkout.sample live-interview-full-v2/.git/hooks/push-to-checkout.sample
+--- live-interview-kit/.git/hooks/push-to-checkout.sample	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/hooks/push-to-checkout.sample	1969-12-31 19:00:00.000000000 -0500
+@@ -1,78 +0,0 @@
+-#!/bin/sh
+-
+-# An example hook script to update a checked-out tree on a git push.
+-#
+-# This hook is invoked by git-receive-pack(1) when it reacts to git
+-# push and updates reference(s) in its repository, and when the push
+-# tries to update the branch that is currently checked out and the
+-# receive.denyCurrentBranch configuration variable is set to
+-# updateInstead.
+-#
+-# By default, such a push is refused if the working tree and the index
+-# of the remote repository has any difference from the currently
+-# checked out commit; when both the working tree and the index match
+-# the current commit, they are updated to match the newly pushed tip
+-# of the branch. This hook is to be used to override the default
+-# behaviour; however the code below reimplements the default behaviour
+-# as a starting point for convenient modification.
+-#
+-# The hook receives the commit with which the tip of the current
+-# branch is going to be updated:
+-commit=$1
+-
+-# It can exit with a non-zero status to refuse the push (when it does
+-# so, it must not modify the index or the working tree).
+-die () {
+-	echo >&2 "$*"
+-	exit 1
+-}
+-
+-# Or it can make any necessary changes to the working tree and to the
+-# index to bring them to the desired state when the tip of the current
+-# branch is updated to the new commit, and exit with a zero status.
+-#
+-# For example, the hook can simply run git read-tree -u -m HEAD "$1"
+-# in order to emulate git fetch that is run in the reverse direction
+-# with git push, as the two-tree form of git read-tree -u -m is
+-# essentially the same as git switch or git checkout that switches
+-# branches while keeping the local changes in the working tree that do
+-# not interfere with the difference between the branches.
+-
+-# The below is a more-or-less exact translation to shell of the C code
+-# for the default behaviour for git's push-to-checkout hook defined in
+-# the push_to_deploy() function in builtin/receive-pack.c.
+-#
+-# Note that the hook will be executed from the repository directory,
+-# not from the working tree, so if you want to perform operations on
+-# the working tree, you will have to adapt your code accordingly, e.g.
+-# by adding "cd .." or using relative paths.
+-
+-if ! git update-index -q --ignore-submodules --refresh
+-then
+-	die "Up-to-date check failed"
+-fi
+-
+-if ! git diff-files --quiet --ignore-submodules --
+-then
+-	die "Working directory has unstaged changes"
+-fi
+-
+-# This is a rough translation of:
+-#
+-#   head_has_history() ? "HEAD" : EMPTY_TREE_SHA1_HEX
+-if git cat-file -e HEAD 2>/dev/null
+-then
+-	head=HEAD
+-else
+-	head=$(git hash-object -t tree --stdin </dev/null)
+-fi
+-
+-if ! git diff-index --quiet --cached --ignore-submodules $head --
+-then
+-	die "Working directory has staged changes"
+-fi
+-
+-if ! git read-tree -u -m "$commit"
+-then
+-	die "Could not update working tree to new HEAD"
+-fi
+diff -ruN live-interview-kit/.git/hooks/update.sample live-interview-full-v2/.git/hooks/update.sample
+--- live-interview-kit/.git/hooks/update.sample	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/hooks/update.sample	1969-12-31 19:00:00.000000000 -0500
+@@ -1,128 +0,0 @@
+-#!/bin/sh
+-#
+-# An example hook script to block unannotated tags from entering.
+-# Called by "git receive-pack" with arguments: refname sha1-old sha1-new
+-#
+-# To enable this hook, rename this file to "update".
+-#
+-# Config
+-# ------
+-# hooks.allowunannotated
+-#   This boolean sets whether unannotated tags will be allowed into the
+-#   repository.  By default they won't be.
+-# hooks.allowdeletetag
+-#   This boolean sets whether deleting tags will be allowed in the
+-#   repository.  By default they won't be.
+-# hooks.allowmodifytag
+-#   This boolean sets whether a tag may be modified after creation. By default
+-#   it won't be.
+-# hooks.allowdeletebranch
+-#   This boolean sets whether deleting branches will be allowed in the
+-#   repository.  By default they won't be.
+-# hooks.denycreatebranch
+-#   This boolean sets whether remotely creating branches will be denied
+-#   in the repository.  By default this is allowed.
+-#
+-
+-# --- Command line
+-refname="$1"
+-oldrev="$2"
+-newrev="$3"
+-
+-# --- Safety check
+-if [ -z "$GIT_DIR" ]; then
+-	echo "Don't run this script from the command line." >&2
+-	echo " (if you want, you could supply GIT_DIR then run" >&2
+-	echo "  $0 <ref> <oldrev> <newrev>)" >&2
+-	exit 1
+-fi
+-
+-if [ -z "$refname" -o -z "$oldrev" -o -z "$newrev" ]; then
+-	echo "usage: $0 <ref> <oldrev> <newrev>" >&2
+-	exit 1
+-fi
+-
+-# --- Config
+-allowunannotated=$(git config --type=bool hooks.allowunannotated)
+-allowdeletebranch=$(git config --type=bool hooks.allowdeletebranch)
+-denycreatebranch=$(git config --type=bool hooks.denycreatebranch)
+-allowdeletetag=$(git config --type=bool hooks.allowdeletetag)
+-allowmodifytag=$(git config --type=bool hooks.allowmodifytag)
+-
+-# check for no description
+-projectdesc=$(sed -e '1q' "$GIT_DIR/description")
+-case "$projectdesc" in
+-"Unnamed repository"* | "")
+-	echo "*** Project description file hasn't been set" >&2
+-	exit 1
+-	;;
+-esac
+-
+-# --- Check types
+-# if $newrev is 0000...0000, it's a commit to delete a ref.
+-zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
+-if [ "$newrev" = "$zero" ]; then
+-	newrev_type=delete
+-else
+-	newrev_type=$(git cat-file -t $newrev)
+-fi
+-
+-case "$refname","$newrev_type" in
+-	refs/tags/*,commit)
+-		# un-annotated tag
+-		short_refname=${refname##refs/tags/}
+-		if [ "$allowunannotated" != "true" ]; then
+-			echo "*** The un-annotated tag, $short_refname, is not allowed in this repository" >&2
+-			echo "*** Use 'git tag [ -a | -s ]' for tags you want to propagate." >&2
+-			exit 1
+-		fi
+-		;;
+-	refs/tags/*,delete)
+-		# delete tag
+-		if [ "$allowdeletetag" != "true" ]; then
+-			echo "*** Deleting a tag is not allowed in this repository" >&2
+-			exit 1
+-		fi
+-		;;
+-	refs/tags/*,tag)
+-		# annotated tag
+-		if [ "$allowmodifytag" != "true" ] && git rev-parse $refname > /dev/null 2>&1
+-		then
+-			echo "*** Tag '$refname' already exists." >&2
+-			echo "*** Modifying a tag is not allowed in this repository." >&2
+-			exit 1
+-		fi
+-		;;
+-	refs/heads/*,commit)
+-		# branch
+-		if [ "$oldrev" = "$zero" -a "$denycreatebranch" = "true" ]; then
+-			echo "*** Creating a branch is not allowed in this repository" >&2
+-			exit 1
+-		fi
+-		;;
+-	refs/heads/*,delete)
+-		# delete branch
+-		if [ "$allowdeletebranch" != "true" ]; then
+-			echo "*** Deleting a branch is not allowed in this repository" >&2
+-			exit 1
+-		fi
+-		;;
+-	refs/remotes/*,commit)
+-		# tracking branch
+-		;;
+-	refs/remotes/*,delete)
+-		# delete tracking branch
+-		if [ "$allowdeletebranch" != "true" ]; then
+-			echo "*** Deleting a tracking branch is not allowed in this repository" >&2
+-			exit 1
+-		fi
+-		;;
+-	*)
+-		# Anything else (is there anything else?)
+-		echo "*** Update hook: unknown type of update to ref $refname of type $newrev_type" >&2
+-		exit 1
+-		;;
+-esac
+-
+-# --- Finished
+-exit 0
+Binary files live-interview-kit/.git/index and live-interview-full-v2/.git/index differ
+diff -ruN live-interview-kit/.git/info/exclude live-interview-full-v2/.git/info/exclude
+--- live-interview-kit/.git/info/exclude	2026-01-03 14:02:26.609300307 -0500
++++ live-interview-full-v2/.git/info/exclude	1969-12-31 19:00:00.000000000 -0500
+@@ -1,6 +0,0 @@
+-# git ls-files --others --exclude-from=.git/info/exclude
+-# Lines that start with '#' are comments.
+-# For a project mostly in C, the following would be a good set of
+-# exclude patterns (uncomment them if you want to use them):
+-# *.[oa]
+-# *~
+diff -ruN live-interview-kit/.git/logs/HEAD live-interview-full-v2/.git/logs/HEAD
+--- live-interview-kit/.git/logs/HEAD	2026-01-03 14:12:20.267217271 -0500
++++ live-interview-full-v2/.git/logs/HEAD	1969-12-31 19:00:00.000000000 -0500
+@@ -1,3 +0,0 @@
+-0000000000000000000000000000000000000000 65cf933d52e608320313d507e53f99d04845fb57 hima-d-bot <230524865+hima-d-bot@users.noreply.github.com> 1767466946 -0500	commit (initial): Finalized live interview kit with clean skeleton and challenge patch
+-65cf933d52e608320313d507e53f99d04845fb57 ec88e2efad1b7bd8f71cda916a0ae44da762b06f hima-d-bot <230524865+hima-d-bot@users.noreply.github.com> 1767467254 -0500	commit: Enhanced Makefile with dynamic path handling and improved Docker robustness
+-ec88e2efad1b7bd8f71cda916a0ae44da762b06f e244ddbb4043cce38d048c2e1f23e5c0348be36c hima-d-bot <230524865+hima-d-bot@users.noreply.github.com> 1767467540 -0500	commit: Implemented secure Lock/Unlock mechanism for challenge patching
+diff -ruN live-interview-kit/.git/logs/refs/heads/master live-interview-full-v2/.git/logs/refs/heads/master
+--- live-interview-kit/.git/logs/refs/heads/master	2026-01-03 14:12:20.267217271 -0500
++++ live-interview-full-v2/.git/logs/refs/heads/master	1969-12-31 19:00:00.000000000 -0500
+@@ -1,3 +0,0 @@
+-0000000000000000000000000000000000000000 65cf933d52e608320313d507e53f99d04845fb57 hima-d-bot <230524865+hima-d-bot@users.noreply.github.com> 1767466946 -0500	commit (initial): Finalized live interview kit with clean skeleton and challenge patch
+-65cf933d52e608320313d507e53f99d04845fb57 ec88e2efad1b7bd8f71cda916a0ae44da762b06f hima-d-bot <230524865+hima-d-bot@users.noreply.github.com> 1767467254 -0500	commit: Enhanced Makefile with dynamic path handling and improved Docker robustness
+-ec88e2efad1b7bd8f71cda916a0ae44da762b06f e244ddbb4043cce38d048c2e1f23e5c0348be36c hima-d-bot <230524865+hima-d-bot@users.noreply.github.com> 1767467540 -0500	commit: Implemented secure Lock/Unlock mechanism for challenge patching
+diff -ruN live-interview-kit/.git/logs/refs/remotes/origin/master live-interview-full-v2/.git/logs/refs/remotes/origin/master
+--- live-interview-kit/.git/logs/refs/remotes/origin/master	2026-01-03 14:12:21.983234303 -0500
++++ live-interview-full-v2/.git/logs/refs/remotes/origin/master	1969-12-31 19:00:00.000000000 -0500
+@@ -1,3 +0,0 @@
+-0000000000000000000000000000000000000000 65cf933d52e608320313d507e53f99d04845fb57 hima-d-bot <230524865+hima-d-bot@users.noreply.github.com> 1767466949 -0500	update by push
+-65cf933d52e608320313d507e53f99d04845fb57 ec88e2efad1b7bd8f71cda916a0ae44da762b06f hima-d-bot <230524865+hima-d-bot@users.noreply.github.com> 1767467255 -0500	update by push
+-ec88e2efad1b7bd8f71cda916a0ae44da762b06f e244ddbb4043cce38d048c2e1f23e5c0348be36c hima-d-bot <230524865+hima-d-bot@users.noreply.github.com> 1767467541 -0500	update by push
+Binary files live-interview-kit/.git/objects/09/6bbfaee7509837ea9974f67d01a228832a4280 and live-interview-full-v2/.git/objects/09/6bbfaee7509837ea9974f67d01a228832a4280 differ
+diff -ruN live-interview-kit/.git/objects/11/1c22bb32c5f26c005a08a21abb3b3f4f77bc2d live-interview-full-v2/.git/objects/11/1c22bb32c5f26c005a08a21abb3b3f4f77bc2d
+--- live-interview-kit/.git/objects/11/1c22bb32c5f26c005a08a21abb3b3f4f77bc2d	2026-01-03 14:02:26.729301506 -0500
++++ live-interview-full-v2/.git/objects/11/1c22bb32c5f26c005a08a21abb3b3f4f77bc2d	1969-12-31 19:00:00.000000000 -0500
+@@ -1 +0,0 @@
+-xMèÀj√0Eª÷WÃŒ∏°€$¥°]tõ˙lÂ÷ñ%#MCB»ø◊"¬t7Øs∏”ª–”ÀfÛdß9D¶E¯bM…D¿”ùæcò®ze$∂~xv∂è]ºÍàŒp%VóÜk w+u∂π]ØﬁÊπËΩ‘Î¸ò]eSº"É≤z§IîF8p4!•n@UìT¥€”MPâ,∑YØ˜jôò‡óŒ˙Ò√aÇg⁄ïáö|∏∂∏∞‘mó∆Dô˙*zm3˝xE˛√U√·ÄOﬂ˛‡=òﬂlîJ‹ï¯kúl?
+\ No newline at end of file
+diff -ruN live-interview-kit/.git/objects/1e/ee00e0ddeda8dece4f5359a5e12a750a646d27 live-interview-full-v2/.git/objects/1e/ee00e0ddeda8dece4f5359a5e12a750a646d27
+--- live-interview-kit/.git/objects/1e/ee00e0ddeda8dece4f5359a5e12a750a646d27	2026-01-03 14:12:20.263217232 -0500
++++ live-interview-full-v2/.git/objects/1e/ee00e0ddeda8dece4f5359a5e12a750a646d27	1969-12-31 19:00:00.000000000 -0500
+@@ -1 +0,0 @@
+-xuç=o¬0Ñô˝+Æû@Æâ@,a2ÇÓ:¢7…õ`…_2N•®‚ø◊Í÷°7‹p∫ÁÆs±√~◊Æ¥÷†Üím<Ÿ∞MãPJ°˚ìΩk_PønåÄÄ°î∂óµl‰F`‡ôi∏ÂÀzsUôÀúæ•Á«É&ñG»∑esûC¡µ4>…&å1„|'Á8‘ÚS®ˇF.≥˜ﬁ©ÙwúRrñ|Ã}_o∆ŸπÂ•¬?oäE‚
+\ No newline at end of file
+Binary files live-interview-kit/.git/objects/20/90fb4b462d7fdcef858f7e73a8b3867a3afa4a and live-interview-full-v2/.git/objects/20/90fb4b462d7fdcef858f7e73a8b3867a3afa4a differ
+Binary files live-interview-kit/.git/objects/21/78d12694fc14dc5c7ac4b787c9f01550c78117 and live-interview-full-v2/.git/objects/21/78d12694fc14dc5c7ac4b787c9f01550c78117 differ
+Binary files live-interview-kit/.git/objects/2d/7c8f52cf1987a2ef76d38d16e27116f8bc0a5a and live-interview-full-v2/.git/objects/2d/7c8f52cf1987a2ef76d38d16e27116f8bc0a5a differ
+Binary files live-interview-kit/.git/objects/34/7cb14dc7195aa1f378beafd34fb6fb63056cb6 and live-interview-full-v2/.git/objects/34/7cb14dc7195aa1f378beafd34fb6fb63056cb6 differ
+diff -ruN live-interview-kit/.git/objects/3a/ecea36add00de3f4d45d98512204720dd9176b live-interview-full-v2/.git/objects/3a/ecea36add00de3f4d45d98512204720dd9176b
+--- live-interview-kit/.git/objects/3a/ecea36add00de3f4d45d98512204720dd9176b	2026-01-03 14:12:20.263217232 -0500
++++ live-interview-full-v2/.git/objects/3a/ecea36add00de3f4d45d98512204720dd9176b	1969-12-31 19:00:00.000000000 -0500
+@@ -1,5 +0,0 @@
+-xçUKè€6ÓYøbb_6B,Ô£á∆hlw7Ö∑ª∞7zZ—“»"Lë.IŸÍ˛˜Œê∂ºZ†'ÀÁı=ÜKeñpı˛˝ıwCò…-¬T{¥[â;xFÁ·ìÙ0Ç;°KY
+-œüù∑m·•—.Iæ†*LÉ‡t¶µ†8ÉÏ3†ﬁJktÉ⁄g\K7∆IolÖ—^HÌ¿◊K·‹z£°26ºı¬≠91Ï§R∞DÿªñzFgI2¬UO-˛ŸJ ä‘—t:Mõ÷˘4ÖZP;úæ2JôG:S˘ù∞‹•ÛB),Åf€j«AQ‘R„$I®%¸E˙	%¸Hç Ñ£ú˜4Nñ\áÉ˜¶X£9èw¶°ôë√ü)Ñ∞êT^l6JÇq‰‚é˚ë%QAÎ‚Ñîu™•óB¡}ª	ôG+´cÙ!0ÍY{À∏a·q◊Ÿ’Ó®]*G3.º∞>IÚ<'¥ÎdEÃÚ,?Œû_>œgí¢ézGkÈìF¨J‹rÏY˛Î	Ñ^:X∏Kí0`∑OSû8ØΩﬂL∆ce
+-°j„¸‰áÀÀÀqçB˘:á—»ˇæuÉ	Ãzw~»óˇû·Ü2Ñ–4Ùs√√Ik0GQvÉ4=ÎıfÕº˝äE-¥t\<nò°8÷N!4lﬁéÑ#|PœFxV√
+-ö>åÖË`ŸAÎ¯Á‹X≥%K»À∂i∫í£œBhû øè‡,Nh5A≤ÅØ\ï¥≈ùiF„TB*JêÉÍ‡b∆b+ﬂF~h"í≥^!|úŒ~˙∂	¬>«¢,ÍXv1:ˆÛˇ2ù…·∂¢}—˚«ì…ﬂ˝Î9∏⁄¥™‰üÓ&xbp·ñÌ@ÿ-⁄¢@Á™V©ÓÕÄ,ê¶S≤èıB˛å¥¢ßE·[rEØ‘w∞Q»kÑÏyË—¢CüÛv≤‰´˘â©*Ë†>≠÷Fª›û¬o6aí‹F!–AÎ¡T!…´¬¥¢Ï©Ç#∞uD8ú¶ñ$OÜ8±§AU„Çâ‘∞‡Á}˚ëìvÃÔ+^ºXWc÷ùGú≤PâzÏÕòkøÙﬂé¢LhXÊútJcù'"≥ÁYÚ}8∞0j÷◊©3÷vñJÑ§í_è6X∂+˜Üç¥¯íö#RÈ¡vI≤?æÉ=‹£+¨ÊÉ=}ôåF#zËdê˚†∑Ó0ﬁ¥XBaZ‡¯¶"Ωd!Cå8Ç∂£—≈`±$TóQ8ºv;nUË"Øb{à¢Ö≤,„‚Qõ±zoÚKvU¯∫xƒeœ: ;“ΩF%ª±Â*∫
+-=ˇ·Sg=tJqÙÖÙkù.ó£n÷ß…fèwüÓiÆ˛Œ$"Hƒ4Ã?+ß£~
+\ No newline at end of file
+Binary files live-interview-kit/.git/objects/3d/286e485b21cf7fb9a14c0524bf5f4ee3b1a731 and live-interview-full-v2/.git/objects/3d/286e485b21cf7fb9a14c0524bf5f4ee3b1a731 differ
+diff -ruN live-interview-kit/.git/objects/3d/7150da80e43e3650342aa4758fa8b74e95d6d6 live-interview-full-v2/.git/objects/3d/7150da80e43e3650342aa4758fa8b74e95d6d6
+--- live-interview-kit/.git/objects/3d/7150da80e43e3650342aa4758fa8b74e95d6d6	2026-01-03 14:02:26.733301546 -0500
++++ live-interview-full-v2/.git/objects/3d/7150da80e43e3650342aa4758fa8b74e95d6d6	1969-12-31 19:00:00.000000000 -0500
+@@ -1,3 +0,0 @@
+-xeéA
+-¬0E]Áqït
+-ÆDPt·¢ı6%–tJ:BΩΩ”"Zp˜¯ˇÛf™ö*ΩZof!∂îXóxs¨Ôâ¢6i`£¶ÕÒRLÀ•ßh]∞˘Ìˆm˚ôÄÓ˙Ø√Äç«\◊•∆c¢'ßK"Œ<πg<êO5xxù}fí¥&üÁêP)SZoG\9«y‹I(ÒÇxkˇï´7ö≥P%
+\ No newline at end of file
+Binary files live-interview-kit/.git/objects/4f/9c266dc522f28718f9f4fb5d6d590a7a002843 and live-interview-full-v2/.git/objects/4f/9c266dc522f28718f9f4fb5d6d590a7a002843 differ
+Binary files live-interview-kit/.git/objects/50/1263456d50e9fe8ccbe078d4ca145cfcc8d767 and live-interview-full-v2/.git/objects/50/1263456d50e9fe8ccbe078d4ca145cfcc8d767 differ
+Binary files live-interview-kit/.git/objects/59/b62773931ffba064fa319f13dc81c5bb129b9e and live-interview-full-v2/.git/objects/59/b62773931ffba064fa319f13dc81c5bb129b9e differ
+Binary files live-interview-kit/.git/objects/5e/5375460f3f3774612faf4da29e33d184b090e6 and live-interview-full-v2/.git/objects/5e/5375460f3f3774612faf4da29e33d184b090e6 differ
+Binary files live-interview-kit/.git/objects/5e/951fea4d2b894576b3c541a3fa0f3c3b4d2414 and live-interview-full-v2/.git/objects/5e/951fea4d2b894576b3c541a3fa0f3c3b4d2414 differ
+diff -ruN live-interview-kit/.git/objects/63/4141e24210849c5bab04993c861ebe7f0afcc5 live-interview-full-v2/.git/objects/63/4141e24210849c5bab04993c861ebe7f0afcc5
+--- live-interview-kit/.git/objects/63/4141e24210849c5bab04993c861ebe7f0afcc5	2026-01-03 14:02:26.733301546 -0500
++++ live-interview-full-v2/.git/objects/63/4141e24210849c5bab04993c861ebe7f0afcc5	1969-12-31 19:00:00.000000000 -0500
+@@ -1,3 +0,0 @@
+-xeê¡Jƒ@D=Á+˙ñKDOf/¢≤ËA√~@O“âÕˆLáôâªQ¸wgQ¡[ø¢®. äZ∏º∏:ªN»r`?Ä≈HõÍó{u≥zÚ)˛Uóƒ¬â)ãï’aÖè
+-¿aòÿ∑pæ…0™OfD«≤∂`pûÖL\c"◊¿ç∞ﬂ?bﬂùxõù‘MJ∞{®Û˝¢VìñÎ˘∏N‰Î&'‘;ª¯¥˝}¬@"∂:Ù±¿]P~Ëû‰ç˜O¥–wNÃV)XööŸ=Á≤•qt™Èï˝‘B˛¿(ú˜N6ßÔF„Òüo
+-∏∆%œˆY}Û‡oô
+\ No newline at end of file
+diff -ruN live-interview-kit/.git/objects/65/cf933d52e608320313d507e53f99d04845fb57 live-interview-full-v2/.git/objects/65/cf933d52e608320313d507e53f99d04845fb57
+--- live-interview-kit/.git/objects/65/cf933d52e608320313d507e53f99d04845fb57	2026-01-03 14:02:26.733301546 -0500
++++ live-interview-full-v2/.git/objects/65/cf933d52e608320313d507e53f99d04845fb57	1969-12-31 19:00:00.000000000 -0500
+@@ -1,2 +0,0 @@
+-x≠èAnÉ0EªÊ≥Ø@få#EQVΩ«ƒ±cG`µßèwπ@∑oÒ˛˚.Øk(Ä÷|ïM∆~‚â·"ãk{M£F‘itãŸ“‹Q|ﬁ¿áï€πΩÊ'‘ ‡`…|ËÂÿe€ªî7yƒﬂÓä?ÆùÀÎ˙ë∆ÅhZeîj*≠-E˛◊⁄¸Ñƒ1¸…1<B™œ /∏◊„Ø.
+-'ÿÔ•‰úfpûcîtxpqæy]m]À
+\ No newline at end of file
+Binary files live-interview-kit/.git/objects/68/59fa73bd2dc1ea4794b17412ec0f31eb936288 and live-interview-full-v2/.git/objects/68/59fa73bd2dc1ea4794b17412ec0f31eb936288 differ
+Binary files live-interview-kit/.git/objects/71/9a9a062fef5e8813673223f632cf0e2462a86d and live-interview-full-v2/.git/objects/71/9a9a062fef5e8813673223f632cf0e2462a86d differ
+Binary files live-interview-kit/.git/objects/72/8dbfca2faaa62738b21befb6b12236d18ad1f8 and live-interview-full-v2/.git/objects/72/8dbfca2faaa62738b21befb6b12236d18ad1f8 differ
+Binary files live-interview-kit/.git/objects/74/8cc6b2a03a6e55cb461779285596fd7dd9c73e and live-interview-full-v2/.git/objects/74/8cc6b2a03a6e55cb461779285596fd7dd9c73e differ
+Binary files live-interview-kit/.git/objects/7e/6dd960754aa17ef06ea473e64ececaf8060ffb and live-interview-full-v2/.git/objects/7e/6dd960754aa17ef06ea473e64ececaf8060ffb differ
+Binary files live-interview-kit/.git/objects/91/e3476471020f70af459bdbd856c934813e4d5e and live-interview-full-v2/.git/objects/91/e3476471020f70af459bdbd856c934813e4d5e differ
+Binary files live-interview-kit/.git/objects/96/06e7f49de365b2d12b9e718475d66f9f3b6685 and live-interview-full-v2/.git/objects/96/06e7f49de365b2d12b9e718475d66f9f3b6685 differ
+Binary files live-interview-kit/.git/objects/96/7a85aa7039d56759fadc4321be10531db933cf and live-interview-full-v2/.git/objects/96/7a85aa7039d56759fadc4321be10531db933cf differ
+Binary files live-interview-kit/.git/objects/a5/99f84ff75941b7cb8cdc03a6cd1a7f15bb09f0 and live-interview-full-v2/.git/objects/a5/99f84ff75941b7cb8cdc03a6cd1a7f15bb09f0 differ
+Binary files live-interview-kit/.git/objects/ad/865b48e3e28771b98c5cc6922574f68c6d4a34 and live-interview-full-v2/.git/objects/ad/865b48e3e28771b98c5cc6922574f68c6d4a34 differ
+Binary files live-interview-kit/.git/objects/b4/a3c0d4e354a3674c1178937b3f1e528f1c2fc6 and live-interview-full-v2/.git/objects/b4/a3c0d4e354a3674c1178937b3f1e528f1c2fc6 differ
+Binary files live-interview-kit/.git/objects/c4/4951a680db0164bd78df59b06bd366a534a39b and live-interview-full-v2/.git/objects/c4/4951a680db0164bd78df59b06bd366a534a39b differ
+Binary files live-interview-kit/.git/objects/c5/79ec3a14a8e09728f45dfced8d855494034b0e and live-interview-full-v2/.git/objects/c5/79ec3a14a8e09728f45dfced8d855494034b0e differ
+Binary files live-interview-kit/.git/objects/e2/44ddbb4043cce38d048c2e1f23e5c0348be36c and live-interview-full-v2/.git/objects/e2/44ddbb4043cce38d048c2e1f23e5c0348be36c differ
+diff -ruN live-interview-kit/.git/objects/ec/88e2efad1b7bd8f71cda916a0ae44da762b06f live-interview-full-v2/.git/objects/ec/88e2efad1b7bd8f71cda916a0ae44da762b06f
+--- live-interview-kit/.git/objects/ec/88e2efad1b7bd8f71cda916a0ae44da762b06f	2026-01-03 14:07:34.060371841 -0500
++++ live-interview-full-v2/.git/objects/ec/88e2efad1b7bd8f71cda916a0ae44da762b06f	1969-12-31 19:00:00.000000000 -0500
+@@ -1,2 +0,0 @@
+-x≠é;nƒ0CS˚”6∆˙⁄¿"Hëî9Ñ>£µ∞ñd»rÇΩ}‘Â©$Ò\I)6‡_Z%Çu&.¥zFÜA£	BÆ÷[øHÂV.ñôìíÜ√T îtaÂ‹KF
+-Œêœ›†&…√∫zãê¡J=ò´m•¬ì˝hKÉ„(ôXî|˝KﬂØìÍ9ÂRÈÿü”=∂Ì≤ì+Èf≠¥PöI#Jƒ°ßùΩ—ˇæüy3Ÿëá/Û†wÇüN˛ôMä”Mo¯=Ê;tÖòéZæ˚‡£∏Gß©≈^gÀtû√/Ljm
+\ No newline at end of file
+Binary files live-interview-kit/.git/objects/f7/63392508812a9c5fa5f7e6403fc895d76faa35 and live-interview-full-v2/.git/objects/f7/63392508812a9c5fa5f7e6403fc895d76faa35 differ
+Binary files live-interview-kit/.git/objects/fc/8f29d241c89143954458ffd76604241244f1a0 and live-interview-full-v2/.git/objects/fc/8f29d241c89143954458ffd76604241244f1a0 differ
+diff -ruN live-interview-kit/.git/refs/heads/master live-interview-full-v2/.git/refs/heads/master
+--- live-interview-kit/.git/refs/heads/master	2026-01-03 14:12:20.267217271 -0500
++++ live-interview-full-v2/.git/refs/heads/master	1969-12-31 19:00:00.000000000 -0500
+@@ -1 +0,0 @@
+-e244ddbb4043cce38d048c2e1f23e5c0348be36c
+diff -ruN live-interview-kit/.git/refs/remotes/origin/master live-interview-full-v2/.git/refs/remotes/origin/master
+--- live-interview-kit/.git/refs/remotes/origin/master	2026-01-03 14:12:21.983234303 -0500
++++ live-interview-full-v2/.git/refs/remotes/origin/master	1969-12-31 19:00:00.000000000 -0500
+@@ -1 +0,0 @@
+-e244ddbb4043cce38d048c2e1f23e5c0348be36c
+diff -ruN live-interview-kit/INTERVIEWER_GUIDE.md live-interview-full-v2/INTERVIEWER_GUIDE.md
+--- live-interview-kit/INTERVIEWER_GUIDE.md	2026-01-03 14:12:14.783165882 -0500
++++ live-interview-full-v2/INTERVIEWER_GUIDE.md	2026-01-03 09:25:37.304947283 -0500
+@@ -1,63 +1,73 @@
+-# Interviewer Guide: Live Interview Test Kit (Secure Workflow)
++# Interviewer Guide: Live Interview Test Kit
+ 
+-This guide provides the necessary steps for the interviewer to manage the secure testing environment during the live interview.
++This guide provides the necessary steps for the interviewer to manage the testing environment during the live interview.
+ 
+ ## 1. Pre-Interview Setup
+ 
+ Ensure the candidate has successfully completed the following steps on their machine:
+ 
+-1.  **Clone the repository.**
+-2.  **Verify environment:** `make dev` (Services start cleanly).
+-3.  **Run initial tests:** `make test` (All tests pass).
++1.  **Clone the repository:**
++    ```bash
++    git clone <REPO_URL>
++    cd live-interview-kit
++    ```
++2.  **Verify environment:**
++    ```bash
++    make dev
++    ```
++    The web app should show the "Tasks App Skeleton" message.
++3.  **Run initial tests:**
++    ```bash
++    make test
++    ```
++    All tests should pass (minimal skeleton tests).
++
++## 2. Applying the Challenge
++
++At the start of the interview, provide the candidate with the `challenge.patch` file and instruct them to apply it.
++
++1.  **Transfer the patch file** to the candidate (e.g., via chat, email, or a shared drive).
++2.  **Instruct the candidate to apply the patch:**
++    ```bash
++    make challenge FILE=challenge.patch
++    ```
++    The output should confirm the patch was applied successfully.
++
++3.  **Restart services (if necessary):**
++    ```bash
++    make dev
++    ```
++    The web app should now show the full Tasks application, but with several bugs.
++
++4.  **Run challenge tests:**
++    ```bash
++    make test
++    ```
++    Confirm that **multiple tests fail** across the API and Web components, indicating the challenge is active.
++
++## 3. Challenge Details and Signals
++
++The applied patch introduces a small Tasks application with the following intentional bugs designed to test debugging and diligence:
++
++| Bug Theme | Location | Description | Signal Tested |
++| :--- | :--- | :--- | :--- |
++| **Backend Logic** | `api/main.py` (read_tasks) | **Pagination Swap:** `skip` and `limit` parameters are swapped in the SQLAlchemy query. This causes incorrect data fetching and is a subtle logic error. | Debugging, Code Review |
++| **Backend Constraint** | `api/main.py` (create_task) | **Silent Failure Trap:** If a task title is "error", the function returns a dummy 200 response without saving to the DB. This tests diligence in checking API responses. | Diligence, API Contract Verification |
++| **Integration Mismatch** | `web/src/App.tsx` (toggleTask) | **Incorrect Payload Key:** The frontend sends `status` instead of the expected `completed` boolean in the PUT request. The backend ignores the update due to the wrong key. | Contract Awareness, Full-Stack Debugging |
++| **Frontend Logic** | `web/src/App.tsx` (addTask) | **Race Condition/UI Sync:** `fetchTasks()` is commented out after a successful POST, meaning the UI does not refresh automatically after adding a task. | State Management, UI/UX Awareness |
++| **Frontend Default** | `web/src/App.tsx` (fetchTasks) | **Default Pagination:** The initial fetch uses hardcoded, incorrect pagination parameters (`skip=10&limit=0`), causing the initial task list to be empty even if tasks exist. | Configuration, Initial State Debugging |
+ 
+-**Crucially, the challenge mode is now LOCKED by default.** The candidate cannot apply the patch until you provide the unlock command.
++## 4. Suggested Follow-up "Small Change"
+ 
+-## 2. Applying the Challenge (Live Session)
++If the candidate finishes early, you can ask them to implement a small feature to test their ability to add new, clean code:
+ 
+-At the start of the interview, follow these steps to activate the challenge:
++> **Task:** Implement a simple filter on the frontend to show only **Completed** or **Pending** tasks. This should be a simple toggle button or dropdown.
+ 
+-### Step 2.1: Provide the Unlock Command
+-
+-Instruct the candidate to run the following command. This creates a hidden file (`.challenge_locked`) that the `make challenge` command checks for.
+-
+-```bash
+-make unlock
+-```
+-
+-### Step 2.2: Provide the Patch File
+-
+-Transfer the `challenge.patch` file to the candidate (e.g., via chat, email, or a shared drive).
+-
+-### Step 2.3: Instruct Candidate to Apply the Patch
+-
+-Instruct the candidate to apply the patch using the dynamic path command:
+-
+-```bash
+-make challenge FILE=path/to/challenge.patch
+-```
+-
+-### Step 2.4: Restart Services
+-
+-Instruct the candidate to restart the services to load the new application code and bugs:
+-
+-```bash
+-make dev
+-```
+-
+-### Step 2.5: Verify Challenge Activation
+-
+-Instruct the candidate to run the tests to confirm the challenge is active:
+-
+-```bash
+-make test
+-```
+-**Expected Result:** Multiple tests should fail across the API and Web components.
+-
+-## 3. Resetting the Environment
++## 5. Resetting the Environment
+ 
+ To clean up the environment after the interview, instruct the candidate to run:
+ 
+ ```bash
+ make reset
+ ```
+-This command reliably restores the repository to the initial skeleton state, removes all changes, and **re-locks** the challenge mode.
++This command uses `git checkout .` and `git clean -fd` to reliably restore the repository to the initial skeleton state, removing all changes and artifacts.
+diff -ruN live-interview-kit/Makefile live-interview-full-v2/Makefile
+--- live-interview-kit/Makefile	2026-01-03 14:11:59.223017918 -0500
++++ live-interview-full-v2/Makefile	2026-01-03 09:25:37.304947283 -0500
+@@ -1,66 +1,33 @@
+-.PHONY: dev test challenge reset clean help unlock
++.PHONY: dev test challenge reset clean
+ 
+ # Default mode is base (skeleton)
+ MODE ?= base
+-PROJECT_NAME = live-interview-kit
+-LOCK_FILE = .challenge_locked
+-
+-help:
+-	@echo "Usage:"
+-	@echo "  make dev              - Build and start services in the background"
+-	@echo "  make logs             - Follow logs from all services"
+-	@echo "  make test             - Run all backend and frontend tests"
+-	@echo "  make unlock           - Unlock the challenge mode (Interviewer only)"
+-	@echo "  make challenge FILE=  - Apply a challenge patch (Only after unlock)"
+-	@echo "  make reset            - Restore repository to skeleton state and relock"
+-	@echo "  make clean            - Stop services and remove all containers/volumes"
+ 
+ dev:
+-	docker compose up --build -d
+-	@echo "Services started. API: http://localhost:8000, Web: http://localhost:3000"
+-
+-logs:
+-	docker compose logs -f
++	docker compose up --build
+ 
+ test:
+-	@echo "Running API tests..."
+ 	docker compose run --rm api pytest
+-	@echo "Running Web tests..."
+ 	docker compose run --rm web npm test -- --watchAll=false
+ 
+-unlock:
+-	@echo "Unlocking challenge mode..."
+-	@touch $(LOCK_FILE)
+-	@echo "Challenge mode UNLOCKED. You can now run 'make challenge FILE=...'"
+-
+ challenge:
+-	@if [ ! -f "$(LOCK_FILE)" ]; then \
+-		echo "Error: Challenge mode is LOCKED."; \
+-		echo "Please wait for your interviewer to provide the unlock command."; \
+-		exit 1; \
+-	fi
+ 	@if [ -z "$(FILE)" ]; then \
+-		echo "Error: FILE argument is missing."; \
++		echo "Error: FILE argument is missing. Usage: make challenge FILE=path/to/challenge.patch"; \
+ 		exit 1; \
+ 	fi
+-	@ABS_FILE=$$(realpath $(FILE)); \
+-	if [ ! -f "$$ABS_FILE" ]; then \
+-		echo "Error: File $$ABS_FILE not found."; \
++	@if [ ! -f "$(FILE)" ]; then \
++		echo "Error: File $(FILE) not found."; \
+ 		exit 1; \
+-	fi; \
+-	echo "Applying patch from: $$ABS_FILE"; \
+-	patch -p1 < "$$ABS_FILE"
+-	@echo "Challenge applied successfully. Please run 'make dev' to restart services."
++	fi
++	patch -p1 < $(FILE)
++	@echo "Challenge applied successfully."
+ 
+ reset:
+-	@echo "Resetting repository to skeleton state..."
+ 	git checkout .
+ 	git clean -fd
+-	rm -f $(LOCK_FILE)
+ 	docker compose down -v
+-	@echo "Repository reset and LOCKED."
++	@echo "Repository reset to base mode."
+ 
+ clean:
+ 	docker compose down -v
+ 	rm -rf api/__pycache__ web/node_modules
+-	rm -f $(LOCK_FILE)
+diff -ruN live-interview-kit/README.md live-interview-full-v2/README.md
+--- live-interview-kit/README.md	2026-01-03 14:12:09.227114056 -0500
++++ live-interview-full-v2/README.md	2026-01-03 09:25:37.304947283 -0500
+@@ -1,61 +1,93 @@
+ # Live Interview Test Kit - Candidate Instructions
+ 
+-Welcome to your live interview environment. This repository contains the base skeleton for the task you will be working on.
++Welcome to your live interview environment. This repository contains the base skeleton for the task you will be working on. The goal of this initial phase is to ensure your environment is correctly set up and ready for the challenge.
+ 
+ ## 1. Prerequisites
+ 
+ You **must** have the following software installed and running on your machine:
+ 
+ 1.  **Git:** For cloning the repository.
+-2.  **Docker and Docker Compose:** The entire application runs inside containers.
++2.  **Docker and Docker Compose:** The entire application runs inside containers, ensuring a consistent environment.
+ 
+ ## 2. Initial Setup and Verification (Pre-Interview)
+ 
+-### Step 2.1: Clone and Start
++Follow these steps to set up the environment and verify the skeleton is working.
++
++### Step 2.1: Clone the Repository
+ 
+ ```bash
++# Replace <REPO_URL> with the actual URL provided by your interviewer
+ git clone <REPO_URL>
+ cd live-interview-kit
++```
++
++### Step 2.2: Build and Start Services
++
++The first time you run this command, Docker will build the images and install all dependencies (Python packages for the API, and Node modules for the Web app).
++
++```bash
+ make dev
+ ```
+ 
+-### Step 2.2: Verify Skeleton
++**Expected Output:**
++The command will show logs for two services: `api` and `web`. Wait until you see messages indicating the services are running and healthy.
++
++-   **API Service:** Running on `http://localhost:8000`
++-   **Web Service:** Running on `http://localhost:3000`
++
++### Step 2.3: Verify Skeleton Application
+ 
+--   **API:** `http://localhost:8000/health` -> `{"status": "ok"}`
+--   **Web:** `http://localhost:3000` -> **"Interview Environment Ready"**
++1.  **Check API Health:** Open `http://localhost:8000/health` in your browser.
++    *   **Expected Result:** A JSON response: `{"status": "ok"}`
++2.  **Check Web App:** Open `http://localhost:3000` in your browser.
++    *   **Expected Result:** A simple page with the text: **"Interview Environment Ready"** and **"Awaiting challenge patch from interviewer..."**
+ 
+-### Step 2.3: Test the Mechanism (Optional)
++### Step 2.4: Run Initial Tests
+ 
+-You can verify that the patching mechanism works by using the provided `dummy_test.patch`. **Note: You must unlock the environment first.**
++The skeleton includes minimal tests to confirm the environment is functional. All tests **must** pass.
+ 
+ ```bash
+-# This will fail initially (Locked)
+-make challenge FILE=dummy_test.patch
++make test
++```
+ 
+-# Unlock and then apply
+-make unlock
+-make challenge FILE=dummy_test.patch
+-make dev
++**Expected Result:**
++The output will show that both the API and Web tests ran successfully with **0 failures**.
++
++## 3. The Challenge Phase (During Interview)
++
++At the start of the interview, your interviewer will provide a challenge file (`challenge.patch`). This file contains the full application code, including all the bugs you need to fix.
++
++### Step 3.1: Apply the Challenge Patch
++
++You will apply the patch using the following command:
++
++```bash
++make challenge FILE=path/to/challenge.patch
+ ```
+-After running this, `http://localhost:8000/` should show "Dummy Patch Applied Successfully!".
+ 
+-**Important:** Before the actual interview, please run `make reset` to return to the clean skeleton state.
++### Step 3.2: Restart Services
++
++The patch modifies the source code, so you must restart the services to load the new code.
+ 
+-## 3. The Live Interview
++```bash
++make dev
++```
+ 
+-At the start of the interview, your interviewer will provide the **real** challenge patch.
++### Step 3.3: Verify Challenge Activation
+ 
+-1.  **Unlock:** Run `make unlock` when instructed.
+-2.  **Apply:** Run `make challenge FILE=path/to/real_challenge.patch`.
+-3.  **Restart:** Run `make dev`.
+-4.  **Solve:** Run `make test` and start fixing the bugs!
++1.  **Check Web App:** Open `http://localhost:3000`. It should now show the full Tasks application UI.
++2.  **Run Tests:**
++    ```bash
++    make test
++    ```
++    **Expected Result:** The tests will now show **multiple failures** across the API and Web components. Your task is to fix these failures and make all tests pass.
+ 
+ ## Commands Summary
+ 
+ | Command | Description |
+ | :--- | :--- |
+-| `make dev` | Starts the API and Web services. |
+-| `make unlock` | **Required** before applying any patch. |
+-| `make challenge FILE=...` | Applies the provided patch file. |
+-| `make test` | Runs all backend and frontend tests. |
+-| `make reset` | Restores the repository to the initial **LOCKED** skeleton state. |
++| `make dev` | Builds (if necessary) and starts the API and Web services. |
++| `make test` | Runs all backend (Python) and frontend (TypeScript) tests. |
++| `make challenge FILE=...` | Applies the patch file provided by the interviewer. |
++| `make reset` | Restores the repository to the initial skeleton state, removing all changes and artifacts. |
++| `make clean` | Stops and removes Docker containers and volumes. |
 diff -ruN live-interview-kit/api/main.py live-interview-full-v2/api/main.py
 --- live-interview-kit/api/main.py	2026-01-03 09:25:19.640798382 -0500
-+++ live-interview-full-v2/api/main.py	2026-01-03 14:01:33.720768939 -0500
-@@ -1,5 +1,42 @@
++++ live-interview-full-v2/api/main.py	2026-01-05 06:19:42.745226728 -0500
+@@ -1,5 +1,50 @@
 -from fastapi import FastAPI
-+from fastapi import FastAPI, HTTPException, Depends
++from fastapi import FastAPI, HTTPException, Depends, Query
  from fastapi.middleware.cors import CORSMiddleware
 +from pydantic import BaseModel
-+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
++from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, or_, and_, func
 +from sqlalchemy.ext.declarative import declarative_base
 +from sqlalchemy.orm import sessionmaker, Session
 +import datetime
@@ -21,9 +1341,10 @@ diff -ruN live-interview-kit/api/main.py live-interview-full-v2/api/main.py
 +class TaskModel(Base):
 +    __tablename__ = "tasks"
 +    id = Column(Integer, primary_key=True, index=True)
-+    title = Column(String)
++    title = Column(String, index=True)
 +    description = Column(String)
 +    completed = Column(Boolean, default=False)
++    priority = Column(String, default="medium") # low, medium, high
 +    created_at = Column(DateTime, default=datetime.datetime.utcnow)
 +
 +Base.metadata.create_all(bind=engine)
@@ -33,6 +1354,7 @@ diff -ruN live-interview-kit/api/main.py live-interview-full-v2/api/main.py
 +    title: str
 +    description: Optional[str] = None
 +    completed: bool = False
++    priority: str = "medium"
 +
 +class TaskCreate(TaskBase):
 +    pass
@@ -42,10 +1364,16 @@ diff -ruN live-interview-kit/api/main.py live-interview-full-v2/api/main.py
 +    created_at: datetime.datetime
 +    class Config:
 +        from_attributes = True
++
++class TaskListResponse(BaseModel):
++    items: List[Task]
++    total: int
++    page: int
++    page_size: int
  
  app = FastAPI()
  
-@@ -10,10 +47,55 @@
+@@ -10,10 +55,87 @@
      allow_headers=["*"],
  )
  
@@ -63,16 +1391,48 @@ diff -ruN live-interview-kit/api/main.py live-interview-full-v2/api/main.py
 -@app.get("/")
 -def read_root():
 -    return {"message": "Environment Ready - Waiting for Challenge"}
-+@app.get("/tasks", response_model=List[Task])
-+def read_tasks(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-+    # BUG 1: Logic error in pagination - 'skip' is used as 'limit' and vice versa
-+    tasks = db.query(TaskModel).offset(limit).limit(skip).all()
-+    return tasks
++@app.get("/tasks", response_model=TaskListResponse)
++def read_tasks(
++    page: int = Query(1, ge=1),
++    page_size: int = Query(10, ge=1, le=100),
++    search: Optional[str] = None,
++    completed: Optional[bool] = None,
++    priority: Optional[str] = None,
++    db: Session = Depends(get_db)
++):
++    query = db.query(TaskModel)
++    
++    # BUG 1: Logic error in filtering - 'completed' filter is inverted
++    if completed is not None:
++        query = query.filter(TaskModel.completed != completed)
++    
++    if search:
++        query = query.filter(or_(
++            TaskModel.title.ilike(f"%{search}%"),
++            TaskModel.description.ilike(f"%{search}%")
++        ))
++    
++    if priority:
++        query = query.filter(TaskModel.priority == priority)
++
++    total = query.count()
++    
++    # BUG 2: Pagination logic error - 'offset' is calculated incorrectly
++    # It should be (page - 1) * page_size, but we use page * page_size
++    offset = page * page_size
++    tasks = query.order_by(TaskModel.created_at.desc()).offset(offset).limit(page_size).all()
++    
++    return {
++        "items": tasks,
++        "total": total,
++        "page": page,
++        "page_size": page_size
++    }
 +
 +@app.post("/tasks", response_model=Task)
 +def create_task(task: TaskCreate, db: Session = Depends(get_db)):
-+    # BUG 2: Silent failure - if title is "error", it doesn't save but returns 200
-+    if task.title == "error":
++    # BUG 3: Silent failure - if title is "error", it doesn't save but returns 200
++    if task.title.lower() == "error":
 +        return Task(id=999, title="error", created_at=datetime.datetime.utcnow())
 +    
 +    db_task = TaskModel(**task.dict())
@@ -87,8 +1447,8 @@ diff -ruN live-interview-kit/api/main.py live-interview-full-v2/api/main.py
 +    if not db_task:
 +        raise HTTPException(status_code=404, detail="Task not found")
 +    
-+    # BUG 3: Partial update bug - 'completed' status is ignored during update
-+    update_data = task.dict(exclude={'completed'})
++    # BUG 4: Partial update bug - 'priority' is ignored during update
++    update_data = task.dict(exclude={'priority'})
 +    for key, value in update_data.items():
 +        setattr(db_task, key, value)
 +    
@@ -104,45 +1464,266 @@ diff -ruN live-interview-kit/api/main.py live-interview-full-v2/api/main.py
 +    db.delete(db_task)
 +    db.commit()
 +    return {"message": "Task deleted"}
+diff -ruN live-interview-kit/api/test_main.py live-interview-full-v2/api/test_main.py
+--- live-interview-kit/api/test_main.py	2026-01-03 09:20:56.174581232 -0500
++++ live-interview-full-v2/api/test_main.py	2026-01-05 06:20:27.965170355 -0500
+@@ -1,14 +1,64 @@
+ from fastapi.testclient import TestClient
+-from main import app
++from main import app, Base, engine, TaskModel
++import pytest
++from sqlalchemy.orm import sessionmaker
+ 
+ client = TestClient(app)
++SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+ 
+-def test_health():
+-    response = client.get("/health")
++@pytest.fixture(autouse=True)
++def setup_db():
++    Base.metadata.drop_all(bind=engine)
++    Base.metadata.create_all(bind=engine)
++    yield
++    Base.metadata.drop_all(bind=engine)
++
++def test_create_task():
++    response = client.post("/tasks", json={"title": "Test Task", "description": "Test Desc", "priority": "high"})
++    assert response.status_code == 200
++    data = response.json()
++    assert data["title"] == "Test Task"
++    assert data["priority"] == "high"
++
++def test_read_tasks_pagination():
++    # Create 15 tasks
++    for i in range(15):
++        client.post("/tasks", json={"title": f"Task {i}"})
++    
++    # Test page 1
++    response = client.get("/tasks?page=1&page_size=5")
++    assert response.status_code == 200
++    data = response.json()
++    assert data["total"] == 15
++    assert len(data["items"]) == 5
++    assert data["page"] == 1
++
++def test_read_tasks_filtering():
++    client.post("/tasks", json={"title": "Active Task", "completed": False})
++    client.post("/tasks", json={"title": "Done Task", "completed": True})
++    
++    # Test completed filter
++    response = client.get("/tasks?completed=true")
++    assert response.status_code == 200
++    items = response.json()["items"]
++    assert all(item["completed"] is True for item in items)
++
++def test_update_task_priority():
++    create_res = client.post("/tasks", json={"title": "Task", "priority": "low"})
++    task_id = create_res.json()["id"]
++    
++    response = client.put(f"/tasks/{task_id}", json={"title": "Task", "priority": "high", "completed": True})
+     assert response.status_code == 200
+-    assert response.json() == {"status": "ok"}
++    data = response.json()
++    assert data["priority"] == "high"
++    assert data["completed"] is True
+ 
+-def test_root():
+-    response = client.get("/")
++def test_silent_failure_trap():
++    response = client.post("/tasks", json={"title": "error"})
+     assert response.status_code == 200
+-    assert "Skeleton" in response.json()["message"]
++    
++    # Verify it's NOT in the database
++    db = SessionLocal()
++    task = db.query(TaskModel).filter(TaskModel.title == "error").first()
++    assert task is None
++    db.close()
+diff -ruN live-interview-kit/challenge.patch live-interview-full-v2/challenge.patch
+--- live-interview-kit/challenge.patch	2026-01-03 14:02:21.469248933 -0500
++++ live-interview-full-v2/challenge.patch	2026-01-03 09:25:37.304947283 -0500
+@@ -1,6 +1,6 @@
+-diff -ruN live-interview-kit/api/main.py live-interview-full-v2/api/main.py
+---- live-interview-kit/api/main.py	2026-01-03 09:25:19.640798382 -0500
+-+++ live-interview-full-v2/api/main.py	2026-01-03 14:01:33.720768939 -0500
++diff -ruN live-interview-kit/api/main.py live-interview-full/api/main.py
++--- live-interview-kit/api/main.py	2026-01-03 09:20:34.938402928 -0500
+++++ live-interview-full/api/main.py	2026-01-03 09:22:13.087226233 -0500
+ @@ -1,5 +1,42 @@
+ -from fastapi import FastAPI
+ +from fastapi import FastAPI, HTTPException, Depends
+@@ -45,7 +45,7 @@
+  
+  app = FastAPI()
+  
+-@@ -10,10 +47,55 @@
++@@ -10,10 +47,56 @@
+      allow_headers=["*"],
+  )
+  
+@@ -62,10 +62,11 @@
+  
+ -@app.get("/")
+ -def read_root():
+--    return {"message": "Environment Ready - Waiting for Challenge"}
++-    return {"message": "Welcome to the Tasks API Skeleton"}
+ +@app.get("/tasks", response_model=List[Task])
+ +def read_tasks(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+ +    # BUG 1: Logic error in pagination - 'skip' is used as 'limit' and vice versa
+++    # This is a subtle bug that might not be immediately obvious but will fail tests.
+ +    tasks = db.query(TaskModel).offset(limit).limit(skip).all()
+ +    return tasks
+ +
+@@ -104,10 +105,10 @@
+ +    db.delete(db_task)
+ +    db.commit()
+ +    return {"message": "Task deleted"}
+-diff -ruN live-interview-kit/web/src/App.tsx live-interview-full-v2/web/src/App.tsx
+---- live-interview-kit/web/src/App.tsx	2026-01-03 09:25:23.100827565 -0500
+-+++ live-interview-full-v2/web/src/App.tsx	2026-01-03 14:02:17.249206759 -0500
+-@@ -1,12 +1,141 @@
++diff -ruN live-interview-kit/web/src/App.tsx live-interview-full/web/src/App.tsx
++--- live-interview-kit/web/src/App.tsx	2026-01-03 09:20:38.194430255 -0500
+++++ live-interview-full/web/src/App.tsx	2026-01-03 09:22:22.143302253 -0500
++@@ -1,11 +1,142 @@
+ -import React from 'react'
+ +import React, { useState, useEffect } from 'react'
+ +import { Plus, Trash2, CheckCircle, Circle } from 'lucide-react'
+@@ -167,6 +168,7 @@
+ +  const toggleTask = async (task: Task) => {
+ +    try {
+ +      // BUG 6: Contract mismatch - frontend sends 'status' instead of 'completed'
+++      // The backend expects 'completed' (boolean), but we send 'status' (string)
+ +      await fetch(`${API_URL}/tasks/${task.id}`, {
+ +        method: 'PUT',
+ +        headers: { 'Content-Type': 'application/json' },
+@@ -189,10 +191,9 @@
+ +
+    return (
+ -    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+--      <div className="bg-white p-8 rounded-lg shadow-md text-center">
+--        <h1 className="text-2xl font-bold mb-4 text-blue-600">Interview Environment Ready</h1>
+--        <p className="text-gray-600">The base skeleton is running correctly.</p>
+--        <p className="text-gray-500 mt-2 text-sm">Awaiting challenge patch from interviewer...</p>
++-      <div className="bg-white p-8 rounded-lg shadow-md">
++-        <h1 className="text-2xl font-bold mb-4">Tasks App Skeleton</h1>
++-        <p className="text-gray-600">Environment is ready. Waiting for challenge pack...</p>
+ +    <div className="min-h-screen bg-gray-100 py-8 px-4">
+ +      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md overflow-hidden">
+ +        <div className="p-6">
+diff -ruN live-interview-kit/docker-compose.yml live-interview-full-v2/docker-compose.yml
+--- live-interview-kit/docker-compose.yml	2026-01-03 14:07:22.264253608 -0500
++++ live-interview-full-v2/docker-compose.yml	2026-01-03 09:25:37.304947283 -0500
+@@ -1,26 +1,20 @@
+ services:
+   api:
+-    build: 
+-      context: ./api
+-      dockerfile: Dockerfile
++    build: ./api
+     ports:
+       - "8000:8000"
+     volumes:
+       - ./api:/app
+     environment:
+       - DATABASE_URL=sqlite:///./test.db
+-      - PYTHONUNBUFFERED=1
+     healthcheck:
+       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+       interval: 5s
+       timeout: 5s
+       retries: 5
+-    restart: unless-stopped
+ 
+   web:
+-    build: 
+-      context: ./web
+-      dockerfile: Dockerfile
++    build: ./web
+     ports:
+       - "3000:3000"
+     volumes:
+@@ -28,8 +22,6 @@
+       - /app/node_modules
+     environment:
+       - VITE_API_URL=http://localhost:8000
+-      - CHOKIDAR_USEPOLLING=true
+     depends_on:
+       api:
+         condition: service_healthy
+-    restart: unless-stopped
+diff -ruN live-interview-kit/dummy_test.patch live-interview-full-v2/dummy_test.patch
+--- live-interview-kit/dummy_test.patch	2026-01-03 14:12:02.331048573 -0500
++++ live-interview-full-v2/dummy_test.patch	1969-12-31 19:00:00.000000000 -0500
+@@ -1,8 +0,0 @@
+---- a/api/main.py
+-+++ b/api/main.py
+-@@ -19,4 +19,4 @@
+- 
+- @app.get("/")
+- def read_root():
+--    return {"message": "Environment Ready - Waiting for Challenge"}
+-+    return {"message": "Dummy Patch Applied Successfully!"}
 diff -ruN live-interview-kit/web/src/App.tsx live-interview-full-v2/web/src/App.tsx
 --- live-interview-kit/web/src/App.tsx	2026-01-03 09:25:23.100827565 -0500
-+++ live-interview-full-v2/web/src/App.tsx	2026-01-03 14:02:17.249206759 -0500
-@@ -1,12 +1,141 @@
++++ live-interview-full-v2/web/src/App.tsx	2026-01-05 06:19:57.745208594 -0500
+@@ -1,12 +1,223 @@
 -import React from 'react'
-+import React, { useState, useEffect } from 'react'
-+import { Plus, Trash2, CheckCircle, Circle } from 'lucide-react'
++import React, { useState, useEffect, useCallback } from 'react'
++import { Plus, Trash2, CheckCircle, Circle, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 +
 +interface Task {
 +  id: number
 +  title: string
 +  description: string
 +  completed: boolean
++  priority: string
 +  created_at: string
++}
++
++interface TaskListResponse {
++  items: Task[]
++  total: int
++  page: int
++  page_size: int
 +}
  
  function App() {
 +  const [tasks, setTasks] = useState<Task[]>([])
++  const [total, setTotal] = useState(0)
++  const [page, setPage] = useState(1)
++  const [search, setSearch] = useState('')
++  const [filterCompleted, setFilterCompleted] = useState<boolean | null>(null)
 +  const [newTitle, setNewTitle] = useState('')
 +  const [loading, setLoading] = useState(true)
 +
 +  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 +
-+  useEffect(() => {
-+    fetchTasks()
-+  }, [])
-+
-+  const fetchTasks = async () => {
++  const fetchTasks = useCallback(async () => {
++    setLoading(true)
 +    try {
-+      // BUG 4: Frontend sends wrong pagination params by default
-+      const response = await fetch(`${API_URL}/tasks?skip=10&limit=0`)
-+      const data = await response.json()
-+      setTasks(data)
++      let url = `${API_URL}/tasks?page=${page}&page_size=5`
++      if (search) url += `&search=${encodeURIComponent(search)}`
++      if (filterCompleted !== null) url += `&completed=${filterCompleted}`
++      
++      const response = await fetch(url)
++      const data: TaskListResponse = await response.json()
++      
++      // BUG 5: Frontend ignores the 'items' field and tries to set tasks to the whole response
++      // This will cause a crash or empty list because data is an object, not an array.
++      // Correct: setTasks(data.items)
++      setTasks(data as any) 
++      setTotal(data.total)
 +    } catch (error) {
 +      console.error('Error fetching tasks:', error)
 +    } finally {
 +      setLoading(false)
 +    }
-+  }
++  }, [API_URL, page, search, filterCompleted])
++
++  useEffect(() => {
++    fetchTasks()
++  }, [fetchTasks])
 +
 +  const addTask = async (e: React.FormEvent) => {
 +    e.preventDefault()
@@ -152,11 +1733,11 @@ diff -ruN live-interview-kit/web/src/App.tsx live-interview-full-v2/web/src/App.
 +      const response = await fetch(`${API_URL}/tasks`, {
 +        method: 'POST',
 +        headers: { 'Content-Type': 'application/json' },
-+        body: JSON.stringify({ title: newTitle, completed: false }),
++        body: JSON.stringify({ title: newTitle, completed: false, priority: 'medium' }),
 +      })
 +      if (response.ok) {
 +        setNewTitle('')
-+        // BUG 5: Race condition / UI Sync - doesn't call fetchTasks() after add
++        // BUG 6: Race condition / UI Sync - doesn't call fetchTasks() after add
 +        // fetchTasks() 
 +      }
 +    } catch (error) {
@@ -166,7 +1747,7 @@ diff -ruN live-interview-kit/web/src/App.tsx live-interview-full-v2/web/src/App.
 +
 +  const toggleTask = async (task: Task) => {
 +    try {
-+      // BUG 6: Contract mismatch - frontend sends 'status' instead of 'completed'
++      // BUG 7: Contract mismatch - frontend sends 'status' instead of 'completed'
 +      await fetch(`${API_URL}/tasks/${task.id}`, {
 +        method: 'PUT',
 +        headers: { 'Content-Type': 'application/json' },
@@ -194,62 +1775,123 @@ diff -ruN live-interview-kit/web/src/App.tsx live-interview-full-v2/web/src/App.
 -        <p className="text-gray-600">The base skeleton is running correctly.</p>
 -        <p className="text-gray-500 mt-2 text-sm">Awaiting challenge patch from interviewer...</p>
 +    <div className="min-h-screen bg-gray-100 py-8 px-4">
-+      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md overflow-hidden">
++      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
 +        <div className="p-6">
-+          <h1 className="text-2xl font-bold text-gray-800 mb-6">My Tasks</h1>
++          <h1 className="text-3xl font-bold text-gray-800 mb-8">Task Manager Pro</h1>
 +          
-+          <form onSubmit={addTask} className="flex mb-6">
-+            <input
-+              type="text"
-+              value={newTitle}
-+              onChange={(e) => setNewTitle(e.target.value)}
-+              placeholder="Add a new task..."
-+              className="flex-1 px-4 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-+            />
-+            <button
-+              type="submit"
-+              className="bg-blue-500 text-white px-4 py-2 rounded-r-md hover:bg-blue-600 transition-colors"
-+            >
-+              <Plus size={20} />
-+            </button>
-+          </form>
++          <div className="flex flex-col md:flex-row gap-4 mb-8">
++            <form onSubmit={addTask} className="flex-1 flex">
++              <input
++                type="text"
++                value={newTitle}
++                onChange={(e) => setNewTitle(e.target.value)}
++                placeholder="Add a new task..."
++                className="flex-1 px-4 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++              />
++              <button
++                type="submit"
++                className="bg-blue-600 text-white px-6 py-2 rounded-r-md hover:bg-blue-700 transition-colors"
++              >
++                <Plus size={20} />
++              </button>
++            </form>
++            
++            <div className="flex gap-2">
++              <div className="relative">
++                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
++                <input
++                  type="text"
++                  value={search}
++                  onChange={(e) => setSearch(e.target.value)}
++                  placeholder="Search..."
++                  className="pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-48"
++                />
++              </div>
++              <select
++                value={filterCompleted === null ? 'all' : filterCompleted.toString()}
++                onChange={(e) => setFilterCompleted(e.target.value === 'all' ? null : e.target.value === 'true')}
++                className="px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++              >
++                <option value="all">All</option>
++                <option value="true">Completed</option>
++                <option value="false">Pending</option>
++              </select>
++            </div>
++          </div>
 +
 +          {loading ? (
-+            <p className="text-center text-gray-500">Loading tasks...</p>
++            <div className="flex justify-center py-12">
++              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
++            </div>
 +          ) : (
-+            <ul className="space-y-3">
-+              {tasks.map((task) => (
-+                <li
-+                  key={task.id}
-+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-md group"
-+                >
-+                  <div className="flex items-center space-x-3">
-+                    <button
-+                      onClick={() => toggleTask(task)}
-+                      className="text-gray-400 hover:text-blue-500 transition-colors"
-+                    >
-+                      {task.completed ? (
-+                        <CheckCircle className="text-green-500" size={20} />
-+                      ) : (
-+                        <Circle size={20} />
-+                      )}
-+                    </button>
-+                    <span className={`${task.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-+                      {task.title}
-+                    </span>
-+                  </div>
-+                  <button
-+                    onClick={() => deleteTask(task.id)}
-+                    className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
++            <>
++              <ul className="space-y-3 mb-8">
++                {Array.isArray(tasks) && tasks.map((task) => (
++                  <li
++                    key={task.id}
++                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100 hover:border-blue-200 transition-all group"
 +                  >
-+                    <Trash2 size={18} />
++                    <div className="flex items-center space-x-4">
++                      <button
++                        onClick={() => toggleTask(task)}
++                        className="text-gray-400 hover:text-blue-600 transition-colors"
++                      >
++                        {task.completed ? (
++                          <CheckCircle className="text-green-500" size={24} />
++                        ) : (
++                          <Circle size={24} />
++                        )}
++                      </button>
++                      <div>
++                        <h3 className={`font-medium ${task.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>
++                          {task.title}
++                        </h3>
++                        <span className={`text-xs px-2 py-0.5 rounded-full ${
++                          task.priority === 'high' ? 'bg-red-100 text-red-600' :
++                          task.priority === 'medium' ? 'bg-yellow-100 text-yellow-600' :
++                          'bg-green-100 text-green-600'
++                        }`}>
++                          {task.priority}
++                        </span>
++                      </div>
++                    </div>
++                    <button
++                      onClick={() => deleteTask(task.id)}
++                      className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-2"
++                    >
++                      <Trash2 size={20} />
++                    </button>
++                  </li>
++                ))}
++                {(!Array.isArray(tasks) || tasks.length === 0) && (
++                  <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
++                    <p className="text-gray-500">No tasks found. Try a different search or add one!</p>
++                  </div>
++                )}
++              </ul>
++
++              <div className="flex items-center justify-between border-t pt-6">
++                <p className="text-sm text-gray-600">
++                  Showing <span className="font-medium">{Array.isArray(tasks) ? tasks.length : 0}</span> of <span className="font-medium">{total}</span> tasks
++                </p>
++                <div className="flex gap-2">
++                  <button
++                    onClick={() => setPage(p => Math.max(1, p - 1))}
++                    disabled={page === 1}
++                    className="p-2 border rounded-md disabled:opacity-50 hover:bg-gray-50"
++                  >
++                    <ChevronLeft size={20} />
 +                  </button>
-+                </li>
-+              ))}
-+              {tasks.length === 0 && (
-+                <p className="text-center text-gray-500 py-4">No tasks yet. Add one above!</p>
-+              )}
-+            </ul>
++                  <button
++                    onClick={() => setPage(p => p + 1)}
++                    disabled={page * 5 >= total}
++                    className="p-2 border rounded-md disabled:opacity-50 hover:bg-gray-50"
++                  >
++                    <ChevronRight size={20} />
++                  </button>
++                </div>
++              </div>
++            </>
 +          )}
 +        </div>
        </div>
