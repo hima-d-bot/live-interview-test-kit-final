@@ -1,0 +1,182 @@
+diff --git a/api/main.py b/api/main.py
+index 2090fb4..1bc95b7 100644
+--- a/api/main.py
++++ b/api/main.py
+@@ -1,19 +1,55 @@
+-from fastapi import FastAPI
++#!/usr/bin/python
++# -*- coding: utf-8 -*-
++from fastapi import FastAPI, HTTPException
+ from fastapi.middleware.cors import CORSMiddleware
++from pydantic import BaseModel
++from typing import List, Optional
+ 
+-app = FastAPI()
++app = FastAPI(
++    title="Live Interview Challenge API",
++    description="A bugged API for candidates to fix.",
++    version="1.0.0",
++)
+ 
+ app.add_middleware(
+     CORSMiddleware,
+-    allow_origins=["*"],
++    allow_origins=["*"],  # In a real app, lock this down
++    allow_credentials=True,
+     allow_methods=["*"],
+     allow_headers=["*"],
+ )
+ 
++# --- Data Model ---
++class Task(BaseModel):
++    id: int
++    title: str
++    completed: bool
++    description: Optional[str] = None
++
++# --- Database (In-memory) ---
++# The bug is here: The data structure is a dictionary of strings, 
++# but the code expects a list of Task objects.
++db: dict = {
++    "1": "Fix the API response format",
++    "2": "Implement the frontend task list",
++    "3": "Add a new feature to the web app",
++}
++
++# --- Endpoints ---
+ @app.get("/health")
+-def health_check():
++async def health_check():
++    """Check if the service is running."""
+     return {"status": "ok"}
+ 
+ @app.get("/")
+-def read_root():
+-    return {"message": "Environment Ready - Waiting for Challenge"}
++async def read_root():
++    """Welcome endpoint to confirm the challenge has started."""
++    return {"message": "Welcome to the Real Interview Challenge!", "status": "ready"}
++
++@app.get("/tasks", response_model=List[Task])
++async def get_tasks():
++    """This endpoint is supposed to return a list of tasks, but it is bugged."""
++    # BUG: The function tries to return the raw `db` dictionary,
++    # which does not match the `List[Task]` response model.
++    # This will cause a Pydantic validation error.
++    return db
+diff --git a/web/src/App.tsx b/web/src/App.tsx
+index 5e951fe..c7b4eb6 100644
+--- a/web/src/App.tsx
++++ b/web/src/App.tsx
+@@ -1,15 +1,103 @@
+-import React from 'react'
++import React, { useState, useEffect } from 'react';
++import { List, CheckCircle, XCircle, Loader } from 'lucide-react';
++
++interface Task {
++  id: number;
++  title: string;
++  completed: boolean;
++  description?: string;
++}
+ 
+ function App() {
++  const [apiMessage, setApiMessage] = useState('Connecting to API...');
++  const [tasks, setTasks] = useState<Task[]>([]);
++  const [loading, setLoading] = useState(true);
++  const [error, setError] = useState<string | null>(null);
++
++  useEffect(() => {
++    // Fetch root message
++    fetch('http://localhost:8000/')
++      .then(res => res.json())
++      .then(data => setApiMessage(data.message))
++      .catch(() => setApiMessage('API is unreachable or returned an error.'));
++
++    // Fetch tasks
++    fetch('http://localhost:8000/tasks')
++      .then(res => {
++        if (!res.ok) {
++          throw new Error(`HTTP error! status: ${res.status}`);
++        }
++        return res.json();
++      })
++      .then(data => {
++        setTasks(data);
++        setLoading(false);
++      })
++      .catch(err => {
++        console.error(err);
++        setError('Failed to load tasks. Check API console for details.');
++        setLoading(false);
++      });
++  }, []);
++
+   return (
+-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+-      <div className="bg-white p-8 rounded-lg shadow-md text-center">
+-        <h1 className="text-2xl font-bold mb-4 text-blue-600">Interview Environment Ready</h1>
+-        <p className="text-gray-600">The base skeleton is running correctly.</p>
+-        <p className="text-gray-500 mt-2 text-sm">Awaiting challenge patch from interviewer...</p>
++    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
++      <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-lg">
++        <h1 className="text-3xl font-extrabold mb-6 text-blue-700 border-b pb-2">
++          {apiMessage}
++        </h1>
++        
++        <div className="mb-6">
++          <h2 className="text-xl font-semibold mb-3 flex items-center text-gray-800">
++            <List className="w-5 h-5 mr-2 text-blue-500" />
++            Challenge Tasks
++          </h2>
++          
++          {loading && (
++            <div className="flex items-center justify-center py-8 text-blue-500">
++              <Loader className="w-6 h-6 animate-spin mr-2" />
++              Loading tasks...
++            </div>
++          )}
++
++          {error && (
++            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
++              <strong className="font-bold">Error: </strong>
++              <span className="block sm:inline">{error}</span>
++            </div>
++          )}
++
++          {!loading && !error && tasks.length === 0 && (
++            <p className="text-gray-500 italic">No tasks loaded. The API might be returning an empty or malformed response.</p>
++          )}
++
++          <ul className="space-y-3">
++            {tasks.map(task => (
++              <li key={task.id} className="flex items-start p-3 bg-gray-50 rounded-lg shadow-sm">
++                {task.completed ? (
++                  <CheckCircle className="w-5 h-5 text-green-500 mt-1 flex-shrink-0" />
++                ) : (
++                  <XCircle className="w-5 h-5 text-red-500 mt-1 flex-shrink-0" />
++                )}
++                <div className="ml-3">
++                  <p className={`font-medium ${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
++                    {task.title}
++                  </p>
++                  {task.description && (
++                    <p className="text-sm text-gray-500 mt-0.5">{task.description}</p>
++                  )}
++                </div>
++              </li>
++            ))}
++          </ul>
++        </div>
++        
++        <footer className="text-center pt-4 border-t mt-4 text-sm text-gray-400">
++          Live Interview Environment v1.0
++        </footer>
+       </div>
+     </div>
+-  )
++  );
+ }
+ 
+-export default App
++export default App;
